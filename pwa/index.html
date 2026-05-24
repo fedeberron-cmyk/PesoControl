@@ -206,7 +206,7 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
     <span class="ico">📷</span>
     <span>Foto con IA</span>
     <span class="sub2">Gemini estima kcal y macros automáticamente</span>
-    <input type="file" id="cam-input" accept="image/*" onchange="handlePhoto(event)">
+    <input type="file" id="cam-input" accept="image/*" multiple onchange="handlePhoto(event)">
   </label>
   <div class="row g8 mb12">
     <button class="btn btn-pri f1" onclick="openModal('m-search')">🔍 Buscar</button>
@@ -610,22 +610,42 @@ async function addSearchFood(name,kcal,pro,carb,fat){
 
 // ─── CAMERA / GEMINI ───
 
-async function handlePhoto(e){
-  const file=e.target.files[0];if(!file)return;
-  if(!localSettings.geminiKey){alert('Configura tu API key de Gemini en Perfil > Ajustes');e.target.value='';return}
+async function analyzePhoto(file){
   const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)});
-  $('ai-results').innerHTML='<div class="empty">Analizando con IA... ⏳</div>';openModal('m-ai-review');
-  try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${localSettings.geminiKey}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{inlineData:{mimeType:file.type,data:b64}},{text:'Analiza esta foto de comida. Identifica cada alimento visible y estima las calorias y macronutrientes por porcion visible.\n\nResponde EXCLUSIVAMENTE en formato JSON con esta estructura:\n{"items":[{"name":"nombre del alimento","estimatedCalories":numero,"estimatedProteinG":numero,"estimatedCarbsG":numero,"estimatedFatG":numero,"servingDescription":"descripcion de la porcion visible"}],"confidence":"high|medium|low"}\n\nSe preciso con las porciones visibles.'}]}],generationConfig:{temperature:0.1,responseMimeType:'application/json'}})});
-    const d=await r.json();
-    if(d.error){$('ai-results').innerHTML=`<div class="empty">Error Gemini: ${d.error.message||d.error.status}</div>`;e.target.value='';return}
-    const text=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    if(!text){$('ai-results').innerHTML='<div class="empty">Gemini no devolvio respuesta. Intenta con otra foto.</div>';e.target.value='';return}
-    const parsed=JSON.parse(text);aiItems=parsed.items||[];
-    if(!aiItems.length){$('ai-results').innerHTML='<div class="empty">No se identificaron alimentos</div>';e.target.value='';return}
-    $('ai-results').innerHTML=`<div class="sub mb8">Confianza: ${parsed.confidence||'?'}</div>`+aiItems.map(it=>`<div class="food-item"><div class="f1"><div class="food-name">${it.name}</div><div class="food-macros">${it.servingDescription||''} · P:${it.estimatedProteinG||0} C:${it.estimatedCarbsG||0} G:${it.estimatedFatG||0}</div></div><span class="food-cal">${it.estimatedCalories} kcal</span></div>`).join('');
-  }catch(err){$('ai-results').innerHTML=`<div class="empty">Error: ${err.message}</div>`}e.target.value='';
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${localSettings.geminiKey}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{inlineData:{mimeType:file.type,data:b64}},{text:'Analiza esta foto de comida. Identifica cada alimento visible y estima las calorías y macronutrientes por porción visible.\n\nResponde EXCLUSIVAMENTE en formato JSON con esta estructura:\n{"items":[{"name":"nombre del alimento","estimatedCalories":numero,"estimatedProteinG":numero,"estimatedCarbsG":numero,"estimatedFatG":numero,"servingDescription":"descripción de la porción visible"}],"confidence":"high|medium|low"}\n\nSé preciso con las porciones visibles.'}]}],generationConfig:{temperature:0.1,responseMimeType:'application/json'}})});
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message||d.error.status);
+  const text=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  if(!text)throw new Error('Gemini no devolvió respuesta');
+  return JSON.parse(text);
+}
+
+async function handlePhoto(e){
+  const files=Array.from(e.target.files||[]);if(!files.length)return;
+  if(!localSettings.geminiKey){alert('Configura tu API key de Gemini en Perfil > Ajustes');e.target.value='';return}
+  $('ai-results').innerHTML=`<div class="empty">Analizando ${files.length} ${files.length===1?'foto':'fotos'} con IA... ⏳</div>`;openModal('m-ai-review');
+  aiItems=[];
+  const confidences=[];const errors=[];
+  const results=await Promise.allSettled(files.map(f=>analyzePhoto(f)));
+  results.forEach((r,i)=>{
+    if(r.status==='fulfilled'){
+      const items=r.value.items||[];
+      aiItems.push(...items.map(it=>({...it,_photoIdx:i+1})));
+      if(r.value.confidence)confidences.push(r.value.confidence);
+    }else{
+      errors.push(`Foto ${i+1}: ${r.reason.message}`);
+    }
+  });
+  if(!aiItems.length){
+    $('ai-results').innerHTML=`<div class="empty">No se identificaron alimentos${errors.length?'<br>'+errors.join('<br>'):''}</div>`;
+    e.target.value='';return;
+  }
+  const conf=confidences.length?confidences[0]:'?';
+  const head=`<div class="sub mb8">${files.length>1?`${files.length} fotos · `:''}Confianza: ${conf}${errors.length?` · ${errors.length} error(es)`:''}</div>`;
+  $('ai-results').innerHTML=head+aiItems.map(it=>`<div class="food-item"><div class="f1"><div class="food-name">${it.name}${files.length>1?` <span class="sub" style="font-size:11px">(foto ${it._photoIdx})</span>`:''}</div><div class="food-macros">${it.servingDescription||''} · P:${it.estimatedProteinG||0} C:${it.estimatedCarbsG||0} G:${it.estimatedFatG||0}</div></div><span class="food-cal">${it.estimatedCalories} kcal</span></div>`).join('');
+  e.target.value='';
 }
 
 async function saveAIResults(){
