@@ -240,6 +240,15 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
   <div id="wt-history"></div>
 </div>
 
+<div id="s-history" class="screen">
+  <h2 class="mb12">Historial 📊</h2>
+  <div class="sub mb12">Tu progreso saldando la deuda calórica.</div>
+  <div class="card" id="hist-overview"></div>
+  <div class="card" id="hist-weight"></div>
+  <div class="card" id="hist-weeks"></div>
+  <div class="card" id="hist-streak"></div>
+</div>
+
 <div id="s-profile" class="screen">
   <h2 class="mb12">Perfil</h2>
   <div class="card" id="prof-info"></div>
@@ -259,7 +268,8 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
   <button class="tab active" onclick="switchTab(0)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h3m10-11v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>Inicio</button>
   <button class="tab" onclick="switchTab(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Comida</button>
   <button class="tab" onclick="switchTab(2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 20h12M12 4v12m0 0l-4-4m4 4l4-4"/></svg>Peso</button>
-  <button class="tab" onclick="switchTab(3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7"/></svg>Perfil</button>
+  <button class="tab" onclick="switchTab(3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-7"/></svg>Historial</button>
+  <button class="tab" onclick="switchTab(4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7"/></svg>Perfil</button>
 </nav>
 
 <!-- MODALS -->
@@ -488,7 +498,7 @@ function switchTab(i){
   currentTab=i;
   document.querySelectorAll('.screen').forEach((s,j)=>s.classList.toggle('active',j===i));
   document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
-  if(i===0)renderDash();if(i===1)renderFood();if(i===2)renderWeight();if(i===3)renderProfile();
+  if(i===0)renderDash();if(i===1)renderFood();if(i===2)renderWeight();if(i===3)renderHistory();if(i===4)renderProfile();
 }
 function openModal(id){$(id).classList.add('show')}
 function closeModals(){document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('show'))}
@@ -707,6 +717,91 @@ async function recalibrateTDEE(){
     await sbQuery('users_profile',{method:'PATCH',body:{tdee:newTDEE,daily_calorie_target:newTarget},filters:`user_id=eq.${currentUser.id}`});
     profile.tdee=newTDEE;profile.daily_calorie_target=newTarget;renderWeight();renderDash();
   }
+}
+
+// ─── HISTORY ───
+function renderHistory(){
+  if(!profile)return;
+  const tdee=profile.tdee||2000;
+  const sw=profile.current_weight_kg||profile.startWeight||0;
+  const tw=profile.target_weight_kg||profile.targetWeight||0;
+
+  // Días registrados (con al menos 1 food)
+  const byDate={};
+  foods.forEach(f=>{byDate[f.date]=(byDate[f.date]||0)+f.calories});
+  const trackedDays=Object.keys(byDate).sort();
+
+  if(!trackedDays.length){
+    $('hist-overview').innerHTML='<div class="empty">Aún no hay días registrados.<br>Empezá a anotar comidas para ver tu progreso.</div>';
+    $('hist-weight').innerHTML='';$('hist-weeks').innerHTML='';$('hist-streak').innerHTML='';
+    return;
+  }
+
+  // Acumulado de balance (negativo = déficit / abono a la deuda)
+  let acumulado=0;
+  const dailyBalances=trackedDays.map(d=>{const bal=(byDate[d]||0)-tdee;acumulado+=bal;return{date:d,cal:byDate[d],bal,acum:acumulado}});
+
+  // Deuda total (kg a bajar × 7700) y abono
+  const kgABajar=Math.max(0,sw-tw);
+  const deudaTotal=Math.round(kgABajar*CALS_PER_KG);
+  const abonado=Math.max(0,-acumulado); // -acumulado porque acumulado negativo = abono
+  const pctProgreso=deudaTotal>0?Math.min(100,(abonado/deudaTotal)*100):0;
+  const restante=Math.max(0,deudaTotal-abonado);
+  const enRojo=acumulado>0; // superávit acumulado
+
+  // OVERVIEW
+  $('hist-overview').innerHTML=`
+    <h3>Deuda calórica</h3>
+    <div class="row-b mb8"><span class="sub">Llevás abonado</span><span class="fw7" style="color:${enRojo?'var(--dan)':'var(--suc)'};font-size:24px">${enRojo?'-':''}${Math.abs(abonado).toLocaleString('es-MX')} kcal</span></div>
+    <div class="row-b mb8"><span class="sub">Meta total</span><span class="fw6">${deudaTotal.toLocaleString('es-MX')} kcal</span></div>
+    <div class="progress-bar" style="margin:8px 0"><div class="progress-fill" style="width:${pctProgreso}%;background:${enRojo?'var(--dan)':'var(--pri)'}"></div></div>
+    <div class="row-b"><span class="sub">${enRojo?'Vas en superávit acumulado':'Restante por abonar'}</span><span class="fw6">${enRojo?'estás sumando deuda':restante.toLocaleString('es-MX')+' kcal'}</span></div>
+    <div class="sub" style="margin-top:10px;font-size:12px">${pctProgreso.toFixed(1)}% de la meta · ${trackedDays.length} día${trackedDays.length===1?'':'s'} registrado${trackedDays.length===1?'':'s'}</div>
+  `;
+
+  // PESO TEORICO vs REAL
+  const pesoTeorico=Math.round((sw+acumulado/CALS_PER_KG)*10)/10;
+  const lw=weights.length?weights[weights.length-1]:null;
+  const diffTR=lw?(lw.weight-pesoTeorico):null;
+  $('hist-weight').innerHTML=`
+    <h3>Peso teórico vs real</h3>
+    <div class="row-b mb8"><span class="sub">Inicio</span><span class="fw6">${sw} kg</span></div>
+    <div class="row-b mb8"><span class="sub">Peso teórico hoy</span><span class="fw7 c-pri">${pesoTeorico} kg</span></div>
+    ${lw?`<div class="row-b mb8"><span class="sub">Peso real (último pesaje)</span><span class="fw7">${lw.weight} kg</span></div>
+    <div class="row-b"><span class="sub">Diferencia real vs teórico</span><span class="fw6" style="color:${diffTR<=0?'var(--suc)':'var(--dan)'}">${diffTR>0?'+':''}${diffTR.toFixed(1)} kg</span></div>`:'<div class="sub">Registrá tu peso para ver la comparación.</div>'}
+  `;
+
+  // SEMANAS (lunes-domingo)
+  const weeks={};
+  dailyBalances.forEach(d=>{
+    const dt=new Date(d.date+'T12:00:00');
+    const day=dt.getDay()||7; // domingo=7
+    const monday=new Date(dt);monday.setDate(dt.getDate()-(day-1));
+    const key=monday.toISOString().slice(0,10);
+    if(!weeks[key])weeks[key]={days:0,balance:0,start:key};
+    weeks[key].days++;weeks[key].balance+=d.bal;
+  });
+  const weekArr=Object.values(weeks).sort((a,b)=>b.start.localeCompare(a.start)); // más reciente primero
+  const formatWeek=s=>{const d=new Date(s+'T12:00:00');const end=new Date(d);end.setDate(d.getDate()+6);return `${d.getDate()}/${d.getMonth()+1} - ${end.getDate()}/${end.getMonth()+1}`};
+  $('hist-weeks').innerHTML=`
+    <h3>Por semana</h3>
+    ${weekArr.length?weekArr.map(w=>{const isDeficit=w.balance<=0;return`<div class="row-b" style="padding:8px 0;border-bottom:1px solid var(--brd)"><div><div class="fw6">${formatWeek(w.start)}</div><div class="sub" style="font-size:12px">${w.days} día${w.days===1?'':'s'} · ${(w.balance/w.days).toFixed(0)} kcal/día prom</div></div><span class="fw7" style="color:${isDeficit?'var(--suc)':'var(--dan)'}">${w.balance>0?'+':''}${w.balance.toLocaleString('es-MX')}</span></div>`}).join(''):'<div class="empty">Sin datos semanales aún</div>'}
+  `;
+
+  // RACHA (días consecutivos hasta hoy)
+  let racha=0;const today=todayStr();
+  for(let i=0;;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    if(byDate[ds])racha++;
+    else if(ds!==today)break; // permitimos saltar HOY si todavía no registró
+    else continue;
+  }
+  $('hist-streak').innerHTML=`
+    <h3>Constancia</h3>
+    <div class="row-b mb8"><span class="sub">Racha actual</span><span class="fw7" style="font-size:20px">🔥 ${racha} día${racha===1?'':'s'}</span></div>
+    <div class="row-b"><span class="sub">Total días registrados</span><span class="fw6">${trackedDays.length}</span></div>
+  `;
 }
 
 // ─── PROFILE ───
