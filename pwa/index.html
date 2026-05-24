@@ -40,6 +40,13 @@ input,select{width:100%;padding:12px;border-radius:10px;border:1.5px solid var(-
 input:focus,select:focus{outline:none;border-color:var(--pri)}
 label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:block}
 .field{margin-bottom:12px}
+.pwd-wrap{position:relative}
+.pwd-wrap input{padding-right:44px}
+.pwd-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:8px;color:var(--tx3);user-select:none}
+.photo-tile{background:linear-gradient(135deg,var(--pri),#0E7C71);color:#fff;border:none;border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;cursor:pointer;position:relative;overflow:hidden;font-weight:700;font-size:15px}
+.photo-tile .ico{font-size:32px}
+.photo-tile .sub2{font-size:12px;opacity:.85;font-weight:500}
+.photo-tile input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
 .tabs{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--brd);display:flex;padding-bottom:var(--safe-b);z-index:100}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 0 4px;gap:2px;border:none;background:none;color:var(--tx3);font-size:10px;font-weight:600;cursor:pointer;min-height:50px}
 .tab.active{color:var(--pri)}
@@ -104,7 +111,7 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
   <div style="text-align:center;padding:60px 0 32px">
     <div style="font-size:64px;margin-bottom:12px">🍎</div>
     <h2 style="font-size:28px;margin-bottom:4px">PesoControl</h2>
-    <div class="sub">Tu tracker de calorias y peso</div>
+    <div class="sub">Tu tracker de calorías y peso</div>
   </div>
   <button class="btn btn-pri btn-block" style="margin-bottom:12px" onclick="showAuth('signup')">Crear cuenta</button>
   <button class="btn btn-sec btn-block" onclick="showAuth('login')">Ya tengo cuenta</button>
@@ -114,9 +121,9 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
 <div class="auth-screen" id="a-login">
   <div style="padding-top:40px">
     <button class="btn btn-ghost" onclick="showAuth('welcome')" style="margin-bottom:16px">← Volver</button>
-    <h2 style="margin-bottom:16px">Iniciar sesion 👋</h2>
+    <h2 style="margin-bottom:16px">Iniciar sesión 👋</h2>
     <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="tu@email.com" autocomplete="email"></div>
-    <div class="field"><label>Contraseña</label><input type="password" id="login-pass" placeholder="Tu contraseña" autocomplete="current-password"></div>
+    <div class="field"><label>Contraseña</label><div class="pwd-wrap"><input type="password" id="login-pass" placeholder="Tu contraseña" autocomplete="current-password"><button type="button" class="pwd-toggle" onclick="togglePwd('login-pass',this)">👁</button></div></div>
     <div id="login-error" style="color:var(--dan);font-size:13px;margin-bottom:8px;display:none"></div>
     <button class="btn btn-pri btn-block" onclick="doLogin()" id="btn-login">Entrar</button>
     <div class="divider">o</div>
@@ -130,8 +137,8 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
     <button class="btn btn-ghost" onclick="showAuth('welcome')" style="margin-bottom:16px">← Volver</button>
     <h2 style="margin-bottom:16px">Crear cuenta 🍎</h2>
     <div class="field"><label>Email *</label><input type="email" id="signup-email" placeholder="tu@email.com" autocomplete="email"></div>
-    <div class="field"><label>Contraseña *</label><input type="password" id="signup-pass" placeholder="Minimo 6 caracteres" autocomplete="new-password"></div>
-    <div class="field"><label>Confirmar contraseña *</label><input type="password" id="signup-pass2" placeholder="Repite tu contraseña"></div>
+    <div class="field"><label>Contraseña *</label><div class="pwd-wrap"><input type="password" id="signup-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="togglePwd('signup-pass',this)">👁</button></div></div>
+    <div class="field"><label>Confirmar contraseña *</label><div class="pwd-wrap"><input type="password" id="signup-pass2" placeholder="Repite tu contraseña"><button type="button" class="pwd-toggle" onclick="togglePwd('signup-pass2',this)">👁</button></div></div>
     <div id="signup-error" style="color:var(--dan);font-size:13px;margin-bottom:8px;display:none"></div>
     <button class="btn btn-pri btn-block" onclick="doSignup()" id="btn-signup">Crear cuenta</button>
     <div class="divider">o</div>
@@ -159,13 +166,14 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
         <button onclick="pickAct(this,'light')" data-v="light">Ligero</button>
         <button onclick="pickAct(this,'moderate')" data-v="moderate">Moderado</button>
         <button onclick="pickAct(this,'active')" data-v="active">Activo</button>
+        <button onclick="pickAct(this,'very_active')" data-v="very_active">Muy activo</button>
       </div>
     </div>
     <div class="row g8">
       <div class="field f1"><label>Peso meta (kg)</label><input type="number" id="ob-target-w" step="0.1" inputmode="decimal"></div>
-      <div class="field f1"><label>Meses</label><input type="number" id="ob-months" value="6" inputmode="numeric"></div>
+      <div class="field f1"><label>Tiempo para lograrlo (meses)</label><input type="number" id="ob-months" value="6" inputmode="numeric"></div>
     </div>
-    <div class="card" style="background:var(--bg3)" id="ob-preview"></div>
+    <div class="card" style="background:var(--bg3);display:none" id="ob-preview"></div>
     <button class="btn btn-pri btn-block" onclick="saveOnboard()" style="margin-top:8px">Comenzar</button>
   </div>
 </div>
@@ -179,8 +187,8 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
     <div class="ring-container" id="cal-ring"></div>
     <div class="macro-row" style="margin-top:12px" id="dash-macros"></div>
   </div>
-  <div class="card"><h3>Balance del dia</h3><div id="dash-balance"></div></div>
-  <div class="card"><h3>Ultimos 7 dias</h3><div class="bar-chart" id="dash-week"></div></div>
+  <div class="card"><h3>Balance del día</h3><div id="dash-balance"></div></div>
+  <div class="card"><h3>Últimos 7 días</h3><div class="bar-chart" id="dash-week"></div></div>
   <div class="card"><h3>Progreso de peso</h3><div id="dash-weight"></div></div>
   <div class="row g8" style="margin-top:8px">
     <button class="btn btn-pri f1" onclick="switchTab(1)">🍽 Registrar comida</button>
@@ -194,10 +202,15 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
     <div class="tc"><div class="fw7 fs14" id="food-date"></div></div>
     <button class="btn-icon" onclick="changeDay(1)">▶</button>
   </div>
+  <label class="photo-tile mb12">
+    <span class="ico">📷</span>
+    <span>Foto con IA</span>
+    <span class="sub2">Gemini estima kcal y macros automáticamente</span>
+    <input type="file" id="cam-input" accept="image/*" onchange="handlePhoto(event)">
+  </label>
   <div class="row g8 mb12">
     <button class="btn btn-pri f1" onclick="openModal('m-search')">🔍 Buscar</button>
     <button class="btn btn-sec f1" onclick="openModal('m-manual')">✏️ Manual</button>
-    <div class="btn-icon" style="position:relative;overflow:hidden"><span style="pointer-events:none">📷</span><input type="file" id="cam-input" accept="image/*" onchange="handlePhoto(event)" style="position:absolute;top:0;left:0;width:44px;height:44px;opacity:0.01;cursor:pointer"></div>
   </div>
   <div id="food-list"></div>
   <div class="card" style="position:sticky;bottom:0;margin-top:8px">
@@ -407,7 +420,7 @@ async function doSignup(){
   const email=$('signup-email').value.trim(),pass=$('signup-pass').value,pass2=$('signup-pass2').value;
   if(!email||!pass){showError('signup-error','Completa todos los campos');return}
   if(pass!==pass2){showError('signup-error','Las contraseñas no coinciden');return}
-  if(pass.length<6){showError('signup-error','Minimo 6 caracteres');return}
+  if(pass.length<6){showError('signup-error','Mínimo 6 caracteres');return}
   $('btn-signup').textContent='Creando...';$('btn-signup').disabled=true;
   try{
     const d=await sbAuth('signup',{email,password:pass});
@@ -429,6 +442,7 @@ function doLogout(){
 }
 
 function showError(id,msg){const el=$(id);el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',5000)}
+function togglePwd(id,btn){const el=$(id);if(el.type==='password'){el.type='text';btn.textContent='🙈'}else{el.type='password';btn.textContent='👁'}}
 
 // ─── DATA LOADING ───
 async function loadUserData(){
@@ -479,10 +493,18 @@ function pickAct(btn,v){obAct=v;btn.parentElement.querySelectorAll('button').for
 
 function updateObPreview(){
   const w=+$('ob-weight').value,h=+$('ob-height').value,a=+$('ob-age').value,s=$('ob-sex').value;
-  if(!w||!h||!a)return;
-  const bmr=calcBMR(s,w,h,a),tdee=calcTDEE(bmr,obAct),tw=+$('ob-target-w').value||w,mo=+$('ob-months').value||6;
-  const target=calcTarget(tdee,w,tw,mo);
-  $('ob-preview').innerHTML=`<div class="row-b"><span class="sub">BMR</span><span class="fw6">${Math.round(bmr)} kcal</span></div><div class="row-b"><span class="sub">TDEE</span><span class="fw6">${tdee} kcal</span></div><div class="row-b"><span class="sub">Meta diaria</span><span class="fw7 c-pri">${target} kcal</span></div>`;
+  if(!w||!h||!a){$('ob-preview').innerHTML='';$('ob-preview').style.display='none';return}
+  $('ob-preview').style.display='block';
+  const bmr=calcBMR(s,w,h,a),tdee=calcTDEE(bmr,obAct);
+  const tw=+$('ob-target-w').value,mo=+$('ob-months').value||6;
+  let extra='';
+  if(tw && tw<w){
+    const kgABajar=w-tw;
+    const deficitTotal=Math.round(kgABajar*CALS_PER_KG);
+    const deficitDiario=Math.round(deficitTotal/(mo*30));
+    extra=`<div class="row-b" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--brd)"><span class="sub">Deuda a saldar (${kgABajar.toFixed(1)} kg)</span><span class="fw7 c-pri">${deficitTotal.toLocaleString('es-MX')} kcal</span></div><div class="row-b"><span class="sub">Abono diario sugerido</span><span class="fw6">${deficitDiario} kcal/día</span></div>`;
+  }
+  $('ob-preview').innerHTML=`<div class="row-b"><span class="sub">BMR (en reposo)</span><span class="fw6">${Math.round(bmr)} kcal</span></div><div class="row-b"><span class="sub">TDEE (gasto total)</span><span class="fw6">${tdee} kcal</span></div>${extra}`;
 }
 ['ob-weight','ob-height','ob-age','ob-target-w','ob-months'].forEach(id=>{const e=$(id);if(e)e.addEventListener('input',updateObPreview)});
 
