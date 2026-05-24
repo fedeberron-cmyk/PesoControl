@@ -348,6 +348,11 @@ label{font-size:13px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:
 <script>
 // ─── CONFIG ───
 const SB_URL='https://cpwlxtcafugzaixxzcqn.supabase.co';
+// Gemini default key — restringida por HTTP referrer a fedeberron-cmyk.github.io y localhost:8123.
+// Si funciona fuera de esos orígenes, Google la rechaza. Power-users pueden override
+// con su propia key en Perfil > Ajustes (se guarda en localStorage).
+const GEMINI_DEFAULT_KEY='AIzaSyBEekVmDzhCE0mUPNHz9_5ACFMd17_BIYc';
+function getGeminiKey(){return (localSettings.geminiKey||'').trim()||GEMINI_DEFAULT_KEY}
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwd2x4dGNhZnVnemFpeHh6Y3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzE1MDgsImV4cCI6MjA5MTEwNzUwOH0.GOfWyCkPl3MscKyRjDwFrb6oq2DPnULscS-KJ1c-a5A';
 const CALS_PER_KG=7700;
 const ACT_MULT={sedentary:1.2,light:1.375,moderate:1.55,active:1.725,very_active:1.9};
@@ -612,7 +617,7 @@ async function addSearchFood(name,kcal,pro,carb,fat){
 
 async function analyzePhoto(file){
   const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)});
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${localSettings.geminiKey}`,{
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${getGeminiKey()}`,{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({contents:[{parts:[{inlineData:{mimeType:file.type,data:b64}},{text:'Analiza esta foto de comida. Identifica cada alimento visible y estima las calorías y macronutrientes por porción visible.\n\nResponde EXCLUSIVAMENTE en formato JSON con esta estructura:\n{"items":[{"name":"nombre del alimento","estimatedCalories":numero,"estimatedProteinG":numero,"estimatedCarbsG":numero,"estimatedFatG":numero,"servingDescription":"descripción de la porción visible"}],"confidence":"high|medium|low"}\n\nSé preciso con las porciones visibles.'}]}],generationConfig:{temperature:0.1,responseMimeType:'application/json'}})});
   const d=await r.json();
@@ -624,7 +629,7 @@ async function analyzePhoto(file){
 
 async function handlePhoto(e){
   const files=Array.from(e.target.files||[]);if(!files.length)return;
-  if(!localSettings.geminiKey){alert('Configura tu API key de Gemini en Perfil > Ajustes');e.target.value='';return}
+  if(!getGeminiKey()){alert('Falta API key de Gemini. Avisale al admin o pegá la tuya en Perfil > Ajustes.');e.target.value='';return}
   $('ai-results').innerHTML=`<div class="empty">Analizando ${files.length} ${files.length===1?'foto':'fotos'} con IA... ⏳</div>`;openModal('m-ai-review');
   aiItems=[];
   const confidences=[];const errors=[];
