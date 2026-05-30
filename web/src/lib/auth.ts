@@ -9,7 +9,9 @@ export type AuthState = {
   loading: boolean
 }
 
-let passwordRecoveryActive = false
+let passwordRecoveryActive =
+  typeof window !== 'undefined' &&
+  (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))
 
 export function isPasswordRecoveryActive(): boolean {
   return passwordRecoveryActive
@@ -122,6 +124,9 @@ export async function updatePassword(password: string): Promise<void> {
   }
 
   passwordRecoveryActive = false
+  if (typeof window !== 'undefined') {
+    window.history.replaceState(null, '', window.location.pathname)
+  }
 }
 
 export async function signOut(): Promise<void> {
