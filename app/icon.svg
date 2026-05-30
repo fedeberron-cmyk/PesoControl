@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>PesoControl</title>
+  <rect width="512" height="512" rx="112" fill="#3c6b4a"/>
+  <path fill="none" stroke="#f3ede3" stroke-linecap="round" stroke-linejoin="round" stroke-width="34" d="M124 320c48-54 90-82 126-82 42 0 58 36 96 36 28 0 58-26 92-78"/>
+  <path fill="none" stroke="#f3ede3" stroke-linecap="round" stroke-linejoin="round" stroke-width="34" d="M362 198h76v76"/>
+  <path fill="#f3ede3" d="M156 144h102c59 0 96 35 96 87s-38 88-96 88h-55v73h-47zm47 42v91h50c34 0 53-17 53-46 0-28-19-45-53-45z"/>
+</svg>
