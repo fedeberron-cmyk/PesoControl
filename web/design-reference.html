@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es" data-theme="light" data-accent="forest">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PesoControl — Preview de diseño</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3EDE3; --surface:#FCF9F3; --ink:#211C15; --muted:#7C7268;
+    --hairline:#E6DECF; --sand:#C6A86B;            /* superávit: tono neutro cálido, nunca rojo */
+    --accent:#3C6B4A; --accent-soft:rgba(60,107,74,.12);
+    --shadow:0 1px 2px rgba(33,28,21,.04),0 8px 24px rgba(33,28,21,.06);
+    --r-sm:10px; --r-md:16px; --r-lg:22px;
+  }
+  [data-theme="dark"]{
+    --bg:#17140F; --surface:#221E18; --ink:#F2ECE1; --muted:#A39A8C;
+    --hairline:#332E26; --sand:#C6A86B;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.4);
+  }
+  [data-accent="teal"]{--accent:#1E6E68;--accent-soft:rgba(30,110,104,.12)}
+  [data-accent="teal"][data-theme="dark"]{--accent:#46938C;--accent-soft:rgba(70,147,140,.16)}
+  [data-accent="forest"]{--accent:#3C6B4A;--accent-soft:rgba(60,107,74,.12)}
+  [data-accent="forest"][data-theme="dark"]{--accent:#5E9469;--accent-soft:rgba(94,148,105,.16)}
+  [data-accent="clay"]{--accent:#B05E3A;--accent-soft:rgba(176,94,58,.12)}
+  [data-accent="clay"][data-theme="dark"]{--accent:#C97B57;--accent-soft:rgba(201,123,87,.16)}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"DM Sans",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;align-items:center;
+    gap:24px;padding:30px 18px 64px;min-height:100vh;
+    transition:background .35s ease,color .35s ease;
+  }
+  .tnum{font-variant-numeric:tabular-nums lining-nums}
+  .serif{font-family:"Fraunces",Georgia,serif}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+  .seg{display:flex;background:var(--surface);border:1px solid var(--hairline);border-radius:999px;padding:4px;box-shadow:var(--shadow)}
+  .seg button{font:500 13px/1 "DM Sans",sans-serif;color:var(--muted);background:none;border:0;padding:7px 13px;border-radius:999px;cursor:pointer;transition:.2s}
+  .seg button.on{background:var(--accent);color:#fff}
+  .dot{width:13px;height:13px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px}
+  .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+  /* ---------- phone con alto real + scroll interno ---------- */
+  .phone{width:392px;max-width:100%;background:var(--bg);border:1px solid var(--hairline);
+    border-radius:42px;padding:14px;box-shadow:var(--shadow)}
+  .screen{height:792px;display:flex;flex-direction:column;position:relative;
+    background:var(--bg);border-radius:30px;overflow:hidden}
+  .statusbar{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:11px 20px 4px;font-size:13px;font-weight:500}
+  .statusbar .r{display:flex;gap:6px;color:var(--muted)}
+
+  /* área que scrollea */
+  .scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .scroll::-webkit-scrollbar{width:0}
+  .head{padding:8px 22px 2px;display:flex;justify-content:space-between;align-items:baseline}
+  .head h1{font:600 19px/1 "DM Sans";letter-spacing:-.01em}
+  .head .day{font-size:13px;color:var(--muted)}
+
+  .card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-lg);
+    margin:12px 16px;padding:20px;box-shadow:var(--shadow)}
+
+  /* hero */
+  .hero .kick{font-size:12.5px;color:var(--muted);letter-spacing:.02em;margin-bottom:2px}
+  .hero h2{font-weight:500;font-size:30px;line-height:1.05;letter-spacing:-.015em;margin-bottom:14px}
+  .chartwrap{position:relative}
+  .chart{width:100%;height:auto;display:block}
+  .destlabel{position:absolute;right:2px;top:62%;text-align:right;line-height:1.15}
+  .destlabel .m{font-size:12px;color:var(--muted)}
+  .destlabel .w{font-weight:600;font-size:15px}
+  .axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;padding:0 2px}
+  .progress{margin-top:18px}
+  .progress .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .progress .pct{font-weight:500;font-size:26px;letter-spacing:-.01em}
+  .bar{height:9px;border-radius:99px;background:var(--accent-soft);overflow:hidden}
+  .bar>i{display:block;height:100%;width:59%;background:var(--accent);border-radius:99px}
+  .progress .dual{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:7px}
+  .progress .reassure{font-style:italic;font-size:15px;color:var(--accent);margin-top:12px}
+
+  /* today */
+  .today{display:flex;align-items:center;gap:20px}
+  .today .net{flex:0 0 auto}
+  .today .net .of{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  .today .net .n{font-weight:500;font-size:42px;line-height:1;letter-spacing:-.02em}
+  .today .meta{flex:1}
+  .chip{display:inline-block;font-size:11.5px;font-weight:500;color:var(--accent);
+    background:var(--accent-soft);padding:4px 10px;border-radius:99px}
+  .today .sub{font-size:12.5px;color:var(--muted);margin-top:9px;line-height:1.4}
+
+  /* ledger */
+  .ledger h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;font-weight:600}
+  .week{display:flex;justify-content:space-between;gap:6px}
+  .week .d{flex:1;text-align:center}
+  .week .d .dn{font-size:11px;color:var(--muted);margin-bottom:7px}
+  .week .d .v{font-size:13px;font-weight:500}
+  .week .d .v.def{color:var(--accent)} .week .d .v.sur{color:var(--sand)} .week .d .v.zero{color:var(--muted)}
+  .week .d .barv{height:34px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px}
+  .week .d .barv>i{width:8px;border-radius:99px;background:var(--accent)}
+  .week .d .barv>i.sur{background:var(--sand)}
+
+  /* footer fijo: capturar siempre a mano, en la zona del pulgar */
+  .footer{flex:0 0 auto;background:var(--bg);border-top:1px solid var(--hairline)}
+  .capture{padding:12px 16px 2px}
+  .cta{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
+    background:var(--accent);color:#fff;border:0;border-radius:var(--r-md);
+    padding:16px;font:600 16px "DM Sans";cursor:pointer;box-shadow:var(--shadow)}
+  .cta .plus{font-size:20px;line-height:1}
+  .capnote{text-align:center;font-size:11.5px;color:var(--muted);margin:8px 0 4px}
+  .tabbar{display:flex;justify-content:space-around;padding:8px 0 10px;color:var(--muted)}
+  .tabbar .t{font-size:11px;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center}
+  .tabbar .t.on{color:var(--accent)}
+  .tabbar .ic{font-size:17px}
+
+  /* specimen */
+  .spec{width:392px;max-width:100%;display:flex;flex-direction:column;gap:16px}
+  .spec .block{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-md);padding:18px 20px;box-shadow:var(--shadow)}
+  .spec .big{font-weight:500;font-size:40px;letter-spacing:-.02em;line-height:1}
+  .spec .small{font-size:13px;color:var(--muted);margin-top:6px}
+  .swatches{display:flex;gap:10px;flex-wrap:wrap}
+  .sw{width:46px;height:46px;border-radius:12px;border:1px solid var(--hairline);position:relative}
+  .sw span{position:absolute;bottom:-17px;left:0;right:0;text-align:center;font-size:9.5px;color:var(--muted)}
+  .note{font-size:12px;color:var(--muted);max-width:392px;text-align:center;line-height:1.5}
+  .hint{font-size:11px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+
+  <div class="controls">
+    <span class="lbl">Tema</span>
+    <div class="seg" id="theme">
+      <button data-v="light" class="on">Claro</button>
+      <button data-v="dark">Oscuro</button>
+    </div>
+    <span class="lbl">Acento</span>
+    <div class="seg" id="accent">
+      <button data-v="teal"><span class="dot" style="background:#1E6E68"></span>Horizonte</button>
+      <button data-v="forest" class="on"><span class="dot" style="background:#3C6B4A"></span>Bosque</button>
+      <button data-v="clay"><span class="dot" style="background:#B05E3A"></span>Arcilla</button>
+    </div>
+  </div>
+  <div class="hint">El teléfono tiene alto real: scrollea el contenido y mirá cómo el botón "Registrar" queda fijo abajo.</div>
+
+  <!-- ===================== PHONE ===================== -->
+  <div class="phone">
+   <div class="screen">
+
+    <div class="statusbar"><span>9:41</span><span class="r">PesoControl</span></div>
+
+    <!-- contenido que scrollea -->
+    <div class="scroll">
+      <div class="head">
+        <h1>Hola, Fede</h1>
+        <span class="day">jueves 28 may</span>
+      </div>
+
+      <!-- HERO: trayectoria a la meta (te recibe) -->
+      <div class="card hero">
+        <div class="kick">Tu camino</div>
+        <h2 class="serif">Vas a llegar.</h2>
+        <div class="chartwrap">
+          <svg class="chart" viewBox="0 0 320 150" preserveAspectRatio="none" aria-label="Trayectoria de peso">
+            <path d="M12,15 L39,34 L66,48 L93,59 L120,72 L147,75 L174,81 L200,86 L200,140 L12,140 Z" fill="var(--accent-soft)"/>
+            <polyline points="12,15 39,34 66,48 93,59 120,72 147,75 174,81 200,86" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="200,86 250,108 300,130" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-dasharray="2 5" stroke-linecap="round" opacity=".7"/>
+            <circle cx="200" cy="86" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2.5"/>
+            <circle cx="300" cy="130" r="3.5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          </svg>
+          <div class="destlabel"><div class="m">meta</div><div class="w serif tnum">85 kg</div></div>
+        </div>
+        <div class="axis"><span>101 kg · jul</span><span>hoy · 91.2</span><span>~nov</span></div>
+        <div class="progress">
+          <div class="row"><span class="pct serif tnum">59% saldado</span></div>
+          <div class="bar"><i></i></div>
+          <div class="dual tnum">Saldado 9.8 / 16.5 kg · 75,616 / 127,500 kcal</div>
+          <div class="dual tnum">Faltan 6.7 kg · 51,884 kcal</div>
+          <div class="reassure serif">Eventualmente llegaremos.</div>
+        </div>
+      </div>
+
+      <!-- HOY: cuánto llevas hoy, sin meta diaria, sin juicio -->
+      <div class="card today">
+        <div class="net">
+          <div class="of">Hoy llevas</div>
+          <div class="n serif tnum">−600</div>
+        </div>
+        <div class="meta">
+          <span class="chip">Decide con calma</span>
+          <div class="sub">Intenta abonar hoy. Y si prefieres sumar, también está bien: es constancia, no perfección.</div>
+        </div>
+      </div>
+
+      <!-- LEDGER semanal -->
+      <div class="card ledger">
+        <h3>Esta semana · −2,400 kcal · −0.31 kg</h3>
+        <div class="week">
+          <div class="d"><div class="dn">L</div><div class="barv"><i style="height:26px"></i></div><div class="v def tnum">−1.0k</div></div>
+          <div class="d"><div class="dn">M</div><div class="barv"><i style="height:26px"></i></div><div class="v def tnum">−1.0k</div></div>
+          <div class="d"><div class="dn">M</div><div class="barv"><i style="height:12px"></i></div><div class="v def tnum">−400</div></div>
+          <div class="d"><div class="dn">J</div><div class="barv"><i style="height:16px"></i></div><div class="v def tnum">−600</div></div>
+          <div class="d"><div class="dn">V</div><div class="barv"><i class="sur" style="height:10px"></i></div><div class="v sur tnum">+300</div></div>
+          <div class="d"><div class="dn">S</div><div class="barv"><i style="height:3px;opacity:.3"></i></div><div class="v zero tnum">—</div></div>
+          <div class="d"><div class="dn">D</div><div class="barv"><i style="height:3px;opacity:.3"></i></div><div class="v zero tnum">—</div></div>
+        </div>
+      </div>
+
+    </div><!-- /scroll -->
+
+    <!-- FOOTER FIJO: registrar siempre a un toque -->
+    <div class="footer">
+      <div class="capture">
+        <button class="cta"><span class="plus">+</span> Registrar comida</button>
+        <div class="capnote">Foto con IA o manual: lo eliges al tocar.</div>
+      </div>
+      <div class="tabbar">
+        <div class="t on"><span class="ic">◎</span>Hoy</div>
+        <div class="t"><span class="ic">▤</span>Camino</div>
+        <div class="t"><span class="ic">⊞</span>Comidas</div>
+        <div class="t"><span class="ic">○</span>Perfil</div>
+      </div>
+    </div>
+
+   </div>
+  </div>
+
+  <!-- ===================== SPECIMEN ===================== -->
+  <div class="spec">
+    <div class="block">
+      <div class="lbl" style="margin-bottom:10px">Tipografía</div>
+      <div class="big serif">91.2 kg · Fraunces</div>
+      <div class="small">Serif cálida para los números grandes y la meta. El hito se siente humano, no clínico.</div>
+      <div style="font-weight:600;font-size:18px;margin-top:16px">DM Sans — interfaz y texto</div>
+      <div class="small tnum">Números tabulares: −1,900 · 51,884 kcal · 59%. Alineados, legibles, de ledger.</div>
+    </div>
+    <div class="block">
+      <div class="lbl" style="margin-bottom:16px">Paleta — Bosque</div>
+      <div class="swatches">
+        <div class="sw" style="background:var(--bg)"><span>papel</span></div>
+        <div class="sw" style="background:var(--ink)"><span>tinta</span></div>
+        <div class="sw" style="background:var(--accent)"><span>acento</span></div>
+        <div class="sw" style="background:var(--sand)"><span>superávit</span></div>
+        <div class="sw" style="background:var(--muted)"><span>apagado</span></div>
+      </div>
+      <div class="small" style="margin-top:28px">El acento es solo para progreso. El superávit usa el tono arena, nunca rojo: pasarte no es un error.</div>
+    </div>
+  </div>
+
+  <p class="note">Scrollea dentro del teléfono y prueba claro/oscuro y los 3 acentos. El botón Registrar queda fijo abajo, en la zona del pulgar.</p>
+
+<script>
+  function wire(id,attr){
+    const seg=document.getElementById(id);
+    seg.addEventListener('click',e=>{
+      const b=e.target.closest('button'); if(!b)return;
+      seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      document.documentElement.setAttribute(attr,b.dataset.v);
+    });
+  }
+  wire('theme','data-theme');
+  wire('accent','data-accent');
+</script>
+</body>
+</html>
