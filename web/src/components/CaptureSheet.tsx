@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
+import { estimateFood, resizeImageToBase64, type FoodEstimate } from '../lib/estimateFood'
 import { supabase, type Database } from '../lib/supabase'
 
 type FoodUnit = 'g' | 'ml' | 'pieza' | 'porcion'
@@ -29,6 +30,14 @@ export function CaptureSheet({
   const [quantity, setQuantity] = useState('1')
   const [unit, setUnit] = useState<FoodUnit>('porcion')
   const [mealType, setMealType] = useState<MealType>('breakfast')
+  const [mode, setMode] = useState<'manual' | 'photo'>('manual')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [photoNote, setPhotoNote] = useState('')
+  const [estimating, setEstimating] = useState(false)
+  const [estimate, setEstimate] = useState<FoodEstimate | null>(null)
+  const [estimatedName, setEstimatedName] = useState('')
+  const [estimatedCalories, setEstimatedCalories] = useState('')
   const [loadingFoods, setLoadingFoods] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -61,6 +70,14 @@ export function CaptureSheet({
     }
   }, [userId])
 
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl)
+      }
+    }
+  }, [photoPreviewUrl])
+
   const parsedKcalPerUnit = parsePositiveNumber(kcalPerUnit)
   const parsedQuantity = parsePositiveNumber(quantity)
   const computedCalories =
@@ -83,6 +100,12 @@ export function CaptureSheet({
     parsedQuantity !== null &&
     computedCalories > 0 &&
     !saving
+  const parsedEstimatedCalories = parseNonNegativeInteger(estimatedCalories)
+  const canSaveEstimate =
+    estimate !== null &&
+    estimatedName.trim().length > 0 &&
+    parsedEstimatedCalories !== null &&
+    !saving
 
   function handleNameInput(value: string) {
     setName(value)
@@ -97,6 +120,42 @@ export function CaptureSheet({
     setKcalPerUnit(formatNumberInput(food.kcal_per_unit))
     setUnit(food.default_unit)
     setMessage(null)
+  }
+
+  function chooseMode(nextMode: 'manual' | 'photo') {
+    setMode(nextMode)
+    setMessage(null)
+  }
+
+  function handlePhotoInput(file: File | null) {
+    setPhotoFile(file)
+    setPhotoPreviewUrl(file ? URL.createObjectURL(file) : null)
+    setEstimate(null)
+    setEstimatedName('')
+    setEstimatedCalories('')
+    setMessage(null)
+  }
+
+  async function handleEstimatePhoto() {
+    if (!photoFile || estimating) {
+      return
+    }
+
+    setEstimating(true)
+    setMessage(null)
+
+    try {
+      const { base64, mimeType } = await resizeImageToBase64(photoFile)
+      const nextEstimate = await estimateFood(base64, mimeType, photoNote.trim() || undefined)
+      setEstimate(nextEstimate)
+      setEstimatedName(nextEstimate.summary)
+      setEstimatedCalories(String(nextEstimate.total_kcal))
+    } catch (error) {
+      console.warn('Could not estimate food photo', error)
+      setMessage('No pude estimar la foto. Probá otra vez o cargala manual.')
+    } finally {
+      setEstimating(false)
+    }
   }
 
   async function handleSave() {
@@ -172,6 +231,57 @@ export function CaptureSheet({
     }
   }
 
+  async function handleSaveEstimate() {
+    if (!canSaveEstimate || parsedEstimatedCalories === null) {
+      setMessage('Revisa nombre y calorías antes de guardar.')
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase.from('food_entries').insert({
+        user_id: userId,
+        date: todayUTC(),
+        meal_type: mealType,
+        name: estimatedName.trim(),
+        calories: parsedEstimatedCalories,
+        ai_estimated: true,
+        photo_url: null,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      await onSaved()
+      onClose()
+    } catch (error) {
+      console.warn('Could not save AI food entry', error)
+      setMessage('No se pudo guardar. Intenta de nuevo en un momento.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function renderMealSelector() {
+    return (
+      <div class="meal-selector" aria-label="Comida">
+        {MEAL_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            class={mealType === option.value ? 'meal-pill is-selected' : 'meal-pill'}
+            type="button"
+            onClick={() => setMealType(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div class="capture-overlay" role="presentation" onClick={onClose}>
       <section
@@ -184,7 +294,7 @@ export function CaptureSheet({
         <div class="sheet-grip" aria-hidden="true" />
         <div class="sheet-head">
           <div>
-            <p class="sheet-kick">Registro manual</p>
+            <p class="sheet-kick">{mode === 'manual' ? 'Registro manual' : 'Estimación por foto'}</p>
             <h2 id="capture-title">Registrar comida</h2>
           </div>
           <button class="sheet-close" type="button" onClick={onClose} aria-label="Cerrar">
@@ -193,14 +303,23 @@ export function CaptureSheet({
         </div>
 
         <div class="capture-modes" aria-label="Tipo de captura">
-          <button class="mode-option is-active" type="button">
+          <button
+            class={mode === 'manual' ? 'mode-option is-active' : 'mode-option'}
+            type="button"
+            onClick={() => chooseMode('manual')}
+          >
             Manual
           </button>
-          <button class="mode-option" type="button" disabled>
-            Foto con IA <span>próximamente</span>
+          <button
+            class={mode === 'photo' ? 'mode-option is-active' : 'mode-option'}
+            type="button"
+            onClick={() => chooseMode('photo')}
+          >
+            Foto con IA
           </button>
         </div>
 
+        {mode === 'manual' ? (
         <div class="capture-form">
           <label class="field">
             <span>Alimento</span>
@@ -280,27 +399,112 @@ export function CaptureSheet({
             </div>
           </div>
 
-          <div class="meal-selector" aria-label="Comida">
-            {MEAL_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                class={mealType === option.value ? 'meal-pill is-selected' : 'meal-pill'}
-                type="button"
-                onClick={() => setMealType(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          {renderMealSelector()}
 
           {message ? <p class="capture-message">{message}</p> : null}
         </div>
+        ) : (
+        <div class="capture-form">
+          <label class="photo-picker">
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
+            />
+            {photoPreviewUrl ? (
+              <img class="photo-preview" src={photoPreviewUrl} alt="Vista previa de comida" />
+            ) : (
+              <span class="photo-placeholder">Tomar o elegir foto</span>
+            )}
+          </label>
+
+          <label class="field">
+            <span>¿Algo que deba saber? (aceite, tamaño de porción...)</span>
+            <textarea
+              value={photoNote}
+              rows={3}
+              placeholder="Opcional"
+              onInput={(event) => setPhotoNote(event.currentTarget.value)}
+            />
+          </label>
+
+          <button
+            class="save-action estimate-action"
+            type="button"
+            onClick={() => void handleEstimatePhoto()}
+            disabled={!photoFile || estimating}
+          >
+            {estimating ? 'Estimando...' : 'Estimar con IA'}
+          </button>
+
+          {estimate ? (
+            <div class="estimate-result">
+              <div class="estimate-summary">
+                <span>Estimación</span>
+                <strong>{estimate.summary}</strong>
+              </div>
+              <div class="estimate-items">
+                {estimate.items.length > 0 ? (
+                  estimate.items.map((item, index) => (
+                    <div class="estimate-item" key={`${item.name}-${index}`}>
+                      <span>{item.name}</span>
+                      <small>{item.portion ? ` · ${item.portion}` : ''}</small>
+                      <strong class="tnum">{item.kcal} kcal</strong>
+                    </div>
+                  ))
+                ) : (
+                  <span class="muted-note">Sin alimentos detectados.</span>
+                )}
+              </div>
+
+              <label class="field">
+                <span>Nombre</span>
+                <input
+                  value={estimatedName}
+                  type="text"
+                  autocomplete="off"
+                  onInput={(event) => setEstimatedName(event.currentTarget.value)}
+                />
+              </label>
+
+              <div class="form-grid">
+                <label class="field">
+                  <span>Total kcal</span>
+                  <input
+                    value={estimatedCalories}
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
+                    onInput={(event) => setEstimatedCalories(event.currentTarget.value)}
+                  />
+                </label>
+                <div class="kcal-preview" aria-live="polite">
+                  <span>Total</span>
+                  <strong class="tnum">{parsedEstimatedCalories ?? 0}</strong>
+                  <small>kcal</small>
+                </div>
+              </div>
+
+              {renderMealSelector()}
+            </div>
+          ) : null}
+
+          {message ? <p class="capture-message">{message}</p> : null}
+        </div>
+        )}
 
         <div class="sheet-actions">
           <button class="ghost-action" type="button" onClick={onClose} disabled={saving}>
             Cancelar
           </button>
-          <button class="save-action" type="button" onClick={() => void handleSave()} disabled={!canSave}>
+          <button
+            class="save-action"
+            type="button"
+            onClick={() => void (mode === 'manual' ? handleSave() : handleSaveEstimate())}
+            disabled={mode === 'manual' ? !canSave : !canSaveEstimate}
+          >
             {saving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
@@ -312,6 +516,14 @@ export function CaptureSheet({
 function parsePositiveNumber(value: string): number | null {
   const parsed = Number(value)
   if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+  return parsed
+}
+
+function parseNonNegativeInteger(value: string): number | null {
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 0) {
     return null
   }
   return parsed

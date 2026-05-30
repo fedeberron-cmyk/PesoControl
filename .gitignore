@@ -43,3 +43,7 @@ yarn-error.*
 
 # Claude Code local config
 .claude/
+.gstack/
+
+# supabase CLI temp
+/supabase/.temp/
