@@ -30,11 +30,13 @@ describe('CaptureSheet photo picker', () => {
     expect(source).toContain('item.grams')
   })
 
-  it('uses the food catalog in manual search', () => {
+  it('uses API-backed food search in manual mode', () => {
     const source = readFileSync(new URL('./CaptureSheet.tsx', import.meta.url), 'utf8')
 
     expect(source).toContain('searchFoodCatalog')
-    expect(source).toContain('Base de alimentos')
+    expect(source).toContain('handleApiFoodSearch')
+    expect(source).toContain('Buscar API')
+    expect(source).toContain('Resultados de alimentos')
     expect(source).toContain('Kcal por gramo')
   })
 })

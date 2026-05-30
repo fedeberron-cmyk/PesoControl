@@ -43,6 +43,9 @@ export function CaptureSheet({
   const [estimatedName, setEstimatedName] = useState('')
   const [estimatedCalories, setEstimatedCalories] = useState('')
   const [loadingFoods, setLoadingFoods] = useState(true)
+  const [apiFoods, setApiFoods] = useState<FoodCatalogItem[]>([])
+  const [searchingApiFoods, setSearchingApiFoods] = useState(false)
+  const [apiFoodSearched, setApiFoodSearched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -97,12 +100,12 @@ export function CaptureSheet({
       .filter((food) => !query || normalize(food.name).includes(query))
       .map((food): FoodSuggestion => ({ origin: 'recent', food }))
     const recentNames = new Set(recent.map(({ food }) => normalize(food.name)))
-    const catalog = searchFoodCatalog(name, query ? 8 : 6)
+    const catalog = apiFoods
       .filter((food) => !recentNames.has(normalize(food.name)))
       .map((food): FoodSuggestion => ({ origin: 'catalog', food }))
 
     return [...recent, ...catalog].slice(0, 12)
-  }, [foods, name])
+  }, [apiFoods, foods, name])
 
   const canSave =
     name.trim().length > 0 &&
@@ -119,8 +122,34 @@ export function CaptureSheet({
 
   function handleNameInput(value: string) {
     setName(value)
+    setApiFoods([])
+    setApiFoodSearched(false)
     if (selectedFood && normalize(selectedFood.name) !== normalize(value)) {
       setSelectedFood(null)
+    }
+  }
+
+  async function handleApiFoodSearch() {
+    const query = name.trim()
+    if (query.length < 2 || searchingApiFoods) {
+      return
+    }
+
+    setSearchingApiFoods(true)
+    setApiFoodSearched(true)
+    setMessage(null)
+
+    try {
+      const results = await searchFoodCatalog(query)
+      setApiFoods(results)
+      if (results.length === 0) {
+        setMessage('No encontré ese alimento en Open Food Facts. Puedes capturarlo manual.')
+      }
+    } catch (error) {
+      console.warn('Could not search food API', error)
+      setMessage('No pude buscar en la API. Puedes capturarlo manual.')
+    } finally {
+      setSearchingApiFoods(false)
     }
   }
 
@@ -341,20 +370,36 @@ export function CaptureSheet({
 
         {mode === 'manual' ? (
         <div class="capture-form">
-          <label class="field">
-            <span>Alimento</span>
-            <input
-              value={name}
-              type="text"
-              autocomplete="off"
-              placeholder="Buscar alimento"
-              onInput={(event) => handleNameInput(event.currentTarget.value)}
-            />
-          </label>
+          <div class="food-search-row">
+            <label class="field">
+              <span>Alimento</span>
+              <input
+                value={name}
+                type="text"
+                autocomplete="off"
+                placeholder="Ej. Tía Rosa, Lala, pechuga"
+                onInput={(event) => handleNameInput(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void handleApiFoodSearch()
+                  }
+                }}
+              />
+            </label>
+            <button
+              class="food-search-action"
+              type="button"
+              onClick={() => void handleApiFoodSearch()}
+              disabled={name.trim().length < 2 || searchingApiFoods}
+            >
+              {searchingApiFoods ? 'Buscando...' : 'Buscar API'}
+            </button>
+          </div>
 
-          <div class="food-chips" aria-label="Base de alimentos">
+          <div class="food-chips" aria-label="Resultados de alimentos">
             {loadingFoods ? (
-              <span class="muted-note">Cargando base...</span>
+              <span class="muted-note">Cargando recientes...</span>
             ) : visibleFoods.length > 0 ? (
               visibleFoods.map((suggestion) => (
                 <button
@@ -372,8 +417,10 @@ export function CaptureSheet({
                   </span>
                 </button>
               ))
+            ) : apiFoodSearched ? (
+              <span class="muted-note">Sin coincidencias en la API.</span>
             ) : (
-              <span class="muted-note">Sin coincidencias.</span>
+              <span class="muted-note">Busca en API o usa tus alimentos recientes.</span>
             )}
           </div>
 
