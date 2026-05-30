@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { federicoSeed, type DailyNet, type HomeSeed, type WeighIn } from './seed'
+import { demoSeed, type DailyNet, type HomeSeed, type WeighIn } from './seed'
 
 type ProfileRow = {
   name: string | null
@@ -80,7 +80,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     const hasFoodToday = intakeByDate.has(fromDateISO)
 
     return {
-      userName: profile.name?.trim() || federicoSeed.userName,
+      userName: profile.name?.trim() || demoSeed.userName,
       startKg,
       goalKg,
       debtTotalKcal,
@@ -91,8 +91,8 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
       recentNets: recentNets(intakeByDate, tdee, fromDateISO),
     }
   } catch (error) {
-    console.warn('Falling back to federicoSeed home model', error)
-    return federicoSeed
+    console.warn('Falling back to demoSeed home model', error)
+    return demoSeed
   }
 }
 

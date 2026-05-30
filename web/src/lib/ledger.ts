@@ -38,8 +38,8 @@ export function theoreticalWeight(startKg: number, cumulativeNet: number): numbe
 }
 
 // Fallback debt total when the user has NOT set one explicitly.
-// The authoritative debt is the user's stored debt_total_kcal (e.g. Federico's
-// 127,500, which implies ~7,969 kcal/kg, not 7,700). This formula is only a
+// The authoritative debt is the user's stored debt_total_kcal (e.g. a custom
+// 127,500 value, which implies ~7,969 kcal/kg, not 7,700). This formula is only a
 // suggested default for new users — never override a stored value with it.
 export function defaultDebtTotalKcal(startKg: number, goalKg: number): number {
   return Math.round((startKg - goalKg) * CALORIES_PER_KG);

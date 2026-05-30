@@ -40,7 +40,7 @@ describe('ledger', () => {
   });
 
   describe('debtProgress', () => {
-    it('uses the stored debt total (Federico: 127,500) as the anchor', () => {
+    it('uses the stored debt total (el usuario: 127,500) as the anchor', () => {
       const progress = debtProgress({
         debtTotalKcal: 127500,
         cumulativeNet: -75616,
