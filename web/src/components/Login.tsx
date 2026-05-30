@@ -7,6 +7,7 @@ import {
   signUp,
   subscribeToPasswordRecovery,
   updatePassword,
+  verifyRecoveryOtp,
 } from '../lib/auth'
 
 type AuthMode = 'login' | 'signup'
@@ -15,6 +16,8 @@ export function Login() {
   const [mode, setMode] = useState<AuthMode>('login')
   const [isRecovery, setIsRecovery] = useState(() => isPasswordRecoveryActive())
   const [email, setEmail] = useState('')
+  const [recoveryEmail, setRecoveryEmail] = useState('')
+  const [recoveryCode, setRecoveryCode] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -27,6 +30,7 @@ export function Login() {
     return subscribeToPasswordRecovery((active) => {
       setIsRecovery(active)
       setMode('login')
+      setRecoveryCode('')
       setPassword('')
       setShowPassword(false)
       setError('')
@@ -39,6 +43,12 @@ export function Login() {
     const cleanEmail = email.trim()
 
     if (isRecovery) {
+      const cleanRecoveryEmail = recoveryEmail || cleanEmail
+
+      if (!/^\d{6}$/.test(recoveryCode)) {
+        setError('Escribe el código de 6 dígitos.')
+        return
+      }
       if (!password) {
         setError('Escribe tu nueva contraseña.')
         return
@@ -53,14 +63,17 @@ export function Login() {
       setMessage('')
 
       try {
+        await verifyRecoveryOtp(cleanRecoveryEmail, recoveryCode)
         await updatePassword(password)
         clearPasswordRecovery()
         setIsRecovery(false)
+        setRecoveryEmail('')
+        setRecoveryCode('')
         setPassword('')
         setShowPassword(false)
-        setMessage('Tu contraseña quedó actualizada.')
-      } catch (err) {
-        setError(authErrorMessage(err))
+        setMessage('Tu contraseña quedó actualizada')
+      } catch {
+        setError('Código inválido o vencido. Pedí uno nuevo.')
       } finally {
         setSubmitting(false)
       }
@@ -98,6 +111,7 @@ export function Login() {
     setError('')
     setMessage('')
     setPassword('')
+    setRecoveryCode('')
     setShowPassword(false)
   }
 
@@ -116,12 +130,54 @@ export function Login() {
 
     try {
       await resetPasswordForEmail(cleanEmail)
-      setMessage('Te enviamos un correo para restablecerla. Revisa también spam.')
+      setRecoveryEmail(cleanEmail)
+      setRecoveryCode('')
+      setPassword('')
+      setShowPassword(false)
+      setIsRecovery(true)
+      setMessage('')
     } catch (err) {
       setError(authErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleResendCode() {
+    const cleanRecoveryEmail = recoveryEmail || email.trim()
+
+    setError('')
+    setMessage('')
+
+    if (!cleanRecoveryEmail) {
+      setIsRecovery(false)
+      setError('Primero escribe tu email.')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      await resetPasswordForEmail(cleanRecoveryEmail)
+      setRecoveryEmail(cleanRecoveryEmail)
+      setMessage('Te enviamos otro código. Revisa también spam.')
+    } catch (err) {
+      setError(authErrorMessage(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleBackToLogin() {
+    clearPasswordRecovery()
+    setIsRecovery(false)
+    setMode('login')
+    setRecoveryEmail('')
+    setRecoveryCode('')
+    setPassword('')
+    setShowPassword(false)
+    setError('')
+    setMessage('')
   }
 
   return (
@@ -135,11 +191,11 @@ export function Login() {
         <section class="login-panel" aria-labelledby="login-title">
           <div class="login-kick">Deuda calórica, sin prisa</div>
           <h1 id="login-title" class="serif">
-            PesoControl
+            {isRecovery ? 'Restablecer contraseña' : 'PesoControl'}
           </h1>
           <p>
             {isRecovery
-              ? 'Escribe una nueva contraseña para volver a entrar.'
+              ? `Te enviamos un código de 6 dígitos a ${recoveryEmail || email}. Revisa tu correo (también spam).`
               : isSignup
                 ? 'Crea tu cuenta para guardar tu progreso.'
                 : 'Entra para ver tu trayectoria y registrar con calma.'}
@@ -160,6 +216,24 @@ export function Login() {
                 />
               </label>
             )}
+
+            {isRecovery ? (
+              <label>
+                <span>Código</span>
+                <input
+                  type="text"
+                  value={recoveryCode}
+                  onInput={(event) => {
+                    setRecoveryCode(event.currentTarget.value.replace(/\D/g, '').slice(0, 6))
+                  }}
+                  placeholder="6 dígitos"
+                  autocomplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  disabled={submitting}
+                />
+              </label>
+            ) : null}
 
             <label>
               <span>{isRecovery ? 'Nueva contraseña' : 'Contraseña'}</span>
@@ -209,7 +283,26 @@ export function Login() {
             </button>
           </form>
 
-          {isRecovery ? null : (
+          {isRecovery ? (
+            <>
+              <button
+                class="login-switch"
+                type="button"
+                onClick={() => void handleResendCode()}
+                disabled={submitting}
+              >
+                Reenviar código
+              </button>
+              <button
+                class="login-switch"
+                type="button"
+                onClick={handleBackToLogin}
+                disabled={submitting}
+              >
+                Volver
+              </button>
+            </>
+          ) : (
             <button
               class="login-switch"
               type="button"

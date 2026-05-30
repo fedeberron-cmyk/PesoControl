@@ -119,9 +119,15 @@ export async function signUp(email: string, password: string): Promise<Session> 
 }
 
 export async function resetPasswordForEmail(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname,
-  })
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function verifyRecoveryOtp(email: string, token: string): Promise<void> {
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' })
 
   if (error) {
     throw error
