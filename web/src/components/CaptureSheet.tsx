@@ -405,19 +405,33 @@ export function CaptureSheet({
         </div>
         ) : (
         <div class="capture-form">
-          <label class="photo-picker">
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
-            />
+          <div class="photo-picker">
             {photoPreviewUrl ? (
               <img class="photo-preview" src={photoPreviewUrl} alt="Vista previa de comida" />
             ) : (
-              <span class="photo-placeholder">Tomar o elegir foto</span>
+              <span class="photo-placeholder">Agrega una foto de tu comida</span>
             )}
-          </label>
+          </div>
+
+          <div class="photo-actions" aria-label="Seleccionar foto">
+            <label class="photo-action">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
+              />
+              Tomar foto
+            </label>
+            <label class="photo-action">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
+              />
+              Elegir de galería
+            </label>
+          </div>
 
           <label class="field">
             <span>¿Algo que deba saber? (aceite, tamaño de porción...)</span>

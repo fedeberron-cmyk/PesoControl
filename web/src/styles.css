@@ -928,7 +928,28 @@ a {
   font-weight: 600;
 }
 
-.photo-picker input {
+.photo-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-action {
+  position: relative;
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.photo-action input {
   position: absolute;
   width: 1px;
   height: 1px;
