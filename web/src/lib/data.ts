@@ -58,7 +58,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     if (foodsError) {
       throw foodsError
     }
-    if (!profile || !weights?.length || !foods?.length) {
+    if (!profile) {
       throw new Error('Missing Supabase rows for home model')
     }
 
@@ -68,8 +68,8 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     const baselineNetKcal = profile.baseline_net_kcal ?? 0
     const tdee = requiredNumber(profile.tdee, 'users_profile.tdee')
 
-    const weighIns = weights.map(toWeighIn).sort((a, b) => a.dateISO.localeCompare(b.dateISO))
-    const intakeByDate = groupIntakeByDate(foods)
+    const weighIns = (weights ?? []).map(toWeighIn).sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+    const intakeByDate = groupIntakeByDate(foods ?? [])
     const dailyNets = [...intakeByDate.entries()].map(([dateISO, intake]) => ({
       dateISO,
       netKcal: intake - tdee,
@@ -77,6 +77,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     const cumulativeNet = baselineNetKcal + dailyNets.reduce((sum, day) => sum + day.netKcal, 0)
     const fromDateISO = todayUTC()
     const todayIntake = intakeByDate.get(fromDateISO) ?? 0
+    const hasFoodToday = intakeByDate.has(fromDateISO)
 
     return {
       userName: profile.name?.trim() || federicoSeed.userName,
@@ -84,7 +85,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
       goalKg,
       debtTotalKcal,
       cumulativeNet,
-      todayNet: todayIntake - tdee,
+      todayNet: hasFoodToday ? todayIntake - tdee : 0,
       fromDateISO,
       weighIns,
       recentNets: recentNets(intakeByDate, tdee, fromDateISO),
