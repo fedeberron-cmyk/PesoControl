@@ -1,8 +1,19 @@
-export function CaptureBar() {
+import { useState } from 'preact/hooks'
+import { CaptureSheet } from './CaptureSheet'
+
+export function CaptureBar({
+  userId,
+  onSaved,
+}: {
+  userId: string
+  onSaved: () => Promise<void>
+}) {
+  const [captureOpen, setCaptureOpen] = useState(false)
+
   return (
     <footer class="footer">
       <div class="capture">
-        <button class="cta" type="button">
+        <button class="cta" type="button" onClick={() => setCaptureOpen(true)}>
           <span class="plus" aria-hidden="true">
             +
           </span>{' '}
@@ -36,6 +47,9 @@ export function CaptureBar() {
           Perfil
         </a>
       </nav>
+      {captureOpen ? (
+        <CaptureSheet userId={userId} onClose={() => setCaptureOpen(false)} onSaved={onSaved} />
+      ) : null}
     </footer>
   )
 }

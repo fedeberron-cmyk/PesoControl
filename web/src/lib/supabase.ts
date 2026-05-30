@@ -19,11 +19,32 @@ export type Database = {
           activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
           tdee: number
           daily_calorie_target: number
+          baseline_net_kcal: number | null
           start_weight_kg: number | null
           start_date: string | null
           debt_total_kcal: number | null
           created_at: string | null
           updated_at: string | null
+        }
+        Insert: Record<string, Json | undefined>
+        Update: Record<string, Json | undefined>
+        Relationships: []
+      }
+      foods: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          kcal_per_unit: number
+          default_unit: 'g' | 'ml' | 'pieza' | 'porcion'
+          protein_g: number | null
+          carbs_g: number | null
+          fat_g: number | null
+          barcode: string | null
+          source: 'manual' | 'ai' | 'off'
+          times_used: number | null
+          last_used_at: string | null
+          created_at: string | null
         }
         Insert: Record<string, Json | undefined>
         Update: Record<string, Json | undefined>

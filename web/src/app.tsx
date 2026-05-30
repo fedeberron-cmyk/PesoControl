@@ -29,6 +29,13 @@ export function App() {
     }
   }
 
+  async function refreshHomeModel() {
+    if (!session) {
+      return
+    }
+    setHomeModel(await loadHomeModel(session.user.id))
+  }
+
   useEffect(() => {
     if (!session) {
       setHomeModel(null)
@@ -132,7 +139,7 @@ export function App() {
             <WeekLedger recentNets={homeModel.recentNets} />
           </div>
 
-          <CaptureBar />
+          <CaptureBar userId={session.user.id} onSaved={refreshHomeModel} />
         </div>
       </div>
     </main>
