@@ -6,6 +6,7 @@ type ProfileRow = {
   start_weight_kg: number | null
   target_weight_kg: number | null
   debt_total_kcal: number | null
+  baseline_net_kcal: number | null
   tdee: number | null
 }
 
@@ -31,7 +32,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
       await Promise.all([
         supabase
           .from('users_profile')
-          .select('name,start_weight_kg,target_weight_kg,debt_total_kcal,tdee')
+          .select('name,start_weight_kg,target_weight_kg,debt_total_kcal,baseline_net_kcal,tdee')
           .eq('user_id', userId)
           .maybeSingle<ProfileRow>(),
         supabase
@@ -64,6 +65,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     const startKg = requiredNumber(profile.start_weight_kg, 'users_profile.start_weight_kg')
     const goalKg = requiredNumber(profile.target_weight_kg, 'users_profile.target_weight_kg')
     const debtTotalKcal = requiredNumber(profile.debt_total_kcal, 'users_profile.debt_total_kcal')
+    const baselineNetKcal = profile.baseline_net_kcal ?? 0
     const tdee = requiredNumber(profile.tdee, 'users_profile.tdee')
 
     const weighIns = weights.map(toWeighIn).sort((a, b) => a.dateISO.localeCompare(b.dateISO))
@@ -72,7 +74,7 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
       dateISO,
       netKcal: intake - tdee,
     }))
-    const cumulativeNet = dailyNets.reduce((sum, day) => sum + day.netKcal, 0)
+    const cumulativeNet = baselineNetKcal + dailyNets.reduce((sum, day) => sum + day.netKcal, 0)
     const fromDateISO = todayUTC()
     const todayIntake = intakeByDate.get(fromDateISO) ?? 0
 

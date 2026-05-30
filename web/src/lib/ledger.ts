@@ -1,4 +1,5 @@
 export const CALORIES_PER_KG = 7700;
+export const TDEE_ADJUSTMENT = 0.85;
 
 export const ACTIVITY_MULTIPLIERS = {
   sedentary: 1.2,
@@ -24,7 +25,8 @@ export function calculateBMR(
 }
 
 export function calculateTDEE(bmr: number, activityLevel: ActivityLevel): number {
-  return Math.round(bmr * ACTIVITY_MULTIPLIERS[activityLevel]);
+  // Calculators overestimate; 0.85 keeps the deficit honest; recalibrateTDEE fine-tunes later.
+  return Math.round(bmr * ACTIVITY_MULTIPLIERS[activityLevel] * TDEE_ADJUSTMENT);
 }
 
 export function cumulativeBalance(nets: number[]): number {

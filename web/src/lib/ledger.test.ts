@@ -17,7 +17,7 @@ describe('ledger', () => {
     it('calculates Mifflin-St Jeor BMR and activity-adjusted TDEE', () => {
       expect(calculateBMR('male', 101, 180, 40)).toBe(1940);
       expect(calculateBMR('female', 70, 165, 35)).toBe(1395.25);
-      expect(calculateTDEE(1940, 'moderate')).toBe(3007);
+      expect(calculateTDEE(1940, 'moderate')).toBe(2556);
     });
   });
 
