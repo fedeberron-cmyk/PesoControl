@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { estimateFood, resizeImageToBase64, type FoodEstimate } from '../lib/estimateFood'
 import { supabase, type Database } from '../lib/supabase'
 
@@ -7,6 +7,7 @@ type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 type FoodRow = Database['public']['Tables']['foods']['Row']
 
 const UNIT_OPTIONS: FoodUnit[] = ['g', 'ml', 'pieza', 'porcion']
+const GALLERY_IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif'
 const MEAL_OPTIONS: { label: string; value: MealType }[] = [
   { label: 'Desayuno', value: 'breakfast' },
   { label: 'Almuerzo', value: 'lunch' },
@@ -41,6 +42,8 @@ export function CaptureSheet({
   const [loadingFoods, setLoadingFoods] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -134,6 +137,15 @@ export function CaptureSheet({
     setEstimatedName('')
     setEstimatedCalories('')
     setMessage(null)
+  }
+
+  function openPhotoSource(source: 'camera' | 'gallery') {
+    const input = source === 'camera' ? cameraInputRef.current : galleryInputRef.current
+    if (!input) {
+      return
+    }
+    input.value = ''
+    input.click()
   }
 
   async function handleEstimatePhoto() {
@@ -406,31 +418,54 @@ export function CaptureSheet({
         ) : (
         <div class="capture-form">
           <div class="photo-picker">
+            <input
+              ref={cameraInputRef}
+              class="photo-file-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              aria-label="Tomar foto"
+              onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
+            />
+            <input
+              ref={galleryInputRef}
+              class="photo-file-input"
+              type="file"
+              accept={GALLERY_IMAGE_ACCEPT}
+              aria-label="Elegir de galería"
+              onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
+            />
             {photoPreviewUrl ? (
-              <img class="photo-preview" src={photoPreviewUrl} alt="Vista previa de comida" />
+              <>
+                <img class="photo-preview" src={photoPreviewUrl} alt="Vista previa de comida" />
+                <div class="photo-overlay-actions" aria-label="Cambiar foto">
+                  <button type="button" onClick={() => openPhotoSource('gallery')}>
+                    Galería
+                  </button>
+                  <button type="button" onClick={() => openPhotoSource('camera')}>
+                    Cámara
+                  </button>
+                </div>
+              </>
             ) : (
-              <span class="photo-placeholder">Agrega una foto de tu comida</span>
+              <div class="photo-empty">
+                <span>Foto de tu comida</span>
+                <button
+                  class="photo-primary-action"
+                  type="button"
+                  onClick={() => openPhotoSource('gallery')}
+                >
+                  Elegir de galería
+                </button>
+                <button
+                  class="photo-secondary-action"
+                  type="button"
+                  onClick={() => openPhotoSource('camera')}
+                >
+                  Tomar foto
+                </button>
+              </div>
             )}
-          </div>
-
-          <div class="photo-actions" aria-label="Seleccionar foto">
-            <label class="photo-action">
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
-              />
-              Tomar foto
-            </label>
-            <label class="photo-action">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => handlePhotoInput(event.currentTarget.files?.[0] ?? null)}
-              />
-              Elegir de galería
-            </label>
           </div>
 
           <label class="field">
