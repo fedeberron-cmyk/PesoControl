@@ -1035,6 +1035,17 @@ a {
   gap: 8px;
 }
 
+.estimate-correction {
+  display: grid;
+  gap: 10px;
+}
+
+.estimate-correction .ghost-action {
+  min-height: 42px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+}
+
 .estimate-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

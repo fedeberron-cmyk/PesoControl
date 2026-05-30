@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { estimateFood, resizeImageToBase64, type FoodEstimate } from '../lib/estimateFood'
+import { searchFoodCatalog, type FoodCatalogItem, type FoodUnit } from '../lib/foodCatalog'
 import { supabase, type Database } from '../lib/supabase'
 
-type FoodUnit = 'g' | 'ml' | 'pieza' | 'porcion'
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
 type FoodRow = Database['public']['Tables']['foods']['Row']
+type FoodSuggestion =
+  | { origin: 'recent'; food: FoodRow }
+  | { origin: 'catalog'; food: FoodCatalogItem }
 
 const UNIT_OPTIONS: FoodUnit[] = ['g', 'ml', 'pieza', 'porcion']
 const GALLERY_IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.heic,.heif'
@@ -90,13 +93,17 @@ export function CaptureSheet({
 
   const visibleFoods = useMemo(() => {
     const query = normalize(name)
-    if (!query) {
-      return foods
-    }
-    return foods.filter((food) => normalize(food.name).includes(query))
+    const recent = foods
+      .filter((food) => !query || normalize(food.name).includes(query))
+      .map((food): FoodSuggestion => ({ origin: 'recent', food }))
+    const recentNames = new Set(recent.map(({ food }) => normalize(food.name)))
+    const catalog = searchFoodCatalog(name, query ? 8 : 6)
+      .filter((food) => !recentNames.has(normalize(food.name)))
+      .map((food): FoodSuggestion => ({ origin: 'catalog', food }))
+
+    return [...recent, ...catalog].slice(0, 12)
   }, [foods, name])
 
-  const isNewFood = !selectedFood
   const canSave =
     name.trim().length > 0 &&
     parsedKcalPerUnit !== null &&
@@ -117,11 +124,12 @@ export function CaptureSheet({
     }
   }
 
-  function chooseFood(food: FoodRow) {
-    setSelectedFood(food)
+  function chooseFood(suggestion: FoodSuggestion) {
+    const food = suggestion.food
+    setSelectedFood(suggestion.origin === 'recent' ? suggestion.food : null)
     setName(food.name)
     setKcalPerUnit(formatNumberInput(food.kcal_per_unit))
-    setUnit(food.default_unit)
+    setUnit(food.default_unit as FoodUnit)
     setMessage(null)
   }
 
@@ -339,36 +347,39 @@ export function CaptureSheet({
               value={name}
               type="text"
               autocomplete="off"
-              placeholder="Ej. yogurt natural"
+              placeholder="Buscar alimento"
               onInput={(event) => handleNameInput(event.currentTarget.value)}
             />
           </label>
 
-          <div class="food-chips" aria-label="Alimentos recientes">
+          <div class="food-chips" aria-label="Base de alimentos">
             {loadingFoods ? (
-              <span class="muted-note">Cargando recientes...</span>
+              <span class="muted-note">Cargando base...</span>
             ) : visibleFoods.length > 0 ? (
-              visibleFoods.map((food) => (
+              visibleFoods.map((suggestion) => (
                 <button
-                  key={food.id}
-                  class={selectedFood?.id === food.id ? 'food-chip is-selected' : 'food-chip'}
+                  key={`${suggestion.origin}-${suggestion.food.id}`}
+                  class={
+                    selectedFood?.id === suggestion.food.id ? 'food-chip is-selected' : 'food-chip'
+                  }
                   type="button"
-                  onClick={() => chooseFood(food)}
+                  onClick={() => chooseFood(suggestion)}
                 >
-                  {food.name}
+                  {suggestion.food.name}
                   <span>
-                    {formatNumberInput(food.kcal_per_unit)} kcal/{food.default_unit}
+                    {formatNumberInput(suggestion.food.kcal_per_unit)} kcal/
+                    {suggestion.food.default_unit}
                   </span>
                 </button>
               ))
             ) : (
-              <span class="muted-note">Sin coincidencias recientes.</span>
+              <span class="muted-note">Sin coincidencias.</span>
             )}
           </div>
 
           <div class="form-grid">
             <label class="field">
-              <span>{isNewFood ? 'Kcal por unidad' : 'Kcal por unidad'}</span>
+              <span>{kcalUnitLabel(unit)}</span>
               <input
                 value={kcalPerUnit}
                 type="number"
@@ -468,15 +479,17 @@ export function CaptureSheet({
             )}
           </div>
 
-          <label class="field">
-            <span>¿Algo que deba saber? (aceite, tamaño de porción...)</span>
-            <textarea
-              value={photoNote}
-              rows={3}
-              placeholder="Opcional"
-              onInput={(event) => setPhotoNote(event.currentTarget.value)}
-            />
-          </label>
+          {!estimate ? (
+            <label class="field">
+              <span>Nota para estimar</span>
+              <textarea
+                value={photoNote}
+                rows={3}
+                placeholder="Ej. plato grande, poco aceite, media porción..."
+                onInput={(event) => setPhotoNote(event.currentTarget.value)}
+              />
+            </label>
+          ) : null}
 
           <button
             class="save-action estimate-action"
@@ -498,13 +511,33 @@ export function CaptureSheet({
                   estimate.items.map((item, index) => (
                     <div class="estimate-item" key={`${item.name}-${index}`}>
                       <span>{item.name}</span>
-                      <small>{item.portion ? ` · ${item.portion}` : ''}</small>
+                      <small>{estimateItemDetail(item)}</small>
                       <strong class="tnum">{item.kcal} kcal</strong>
                     </div>
                   ))
                 ) : (
                   <span class="muted-note">Sin alimentos detectados.</span>
                 )}
+              </div>
+
+              <div class="estimate-correction">
+                <label class="field">
+                  <span>Comentario o corrección</span>
+                  <textarea
+                    value={photoNote}
+                    rows={3}
+                    placeholder="Ej. no fue tanto arroz, fueron 2 tortillas..."
+                    onInput={(event) => setPhotoNote(event.currentTarget.value)}
+                  />
+                </label>
+                <button
+                  class="ghost-action"
+                  type="button"
+                  onClick={() => void handleEstimatePhoto()}
+                  disabled={!photoFile || estimating}
+                >
+                  {estimating ? 'Reestimando...' : 'Reestimar'}
+                </button>
               </div>
 
               <label class="field">
@@ -582,8 +615,32 @@ function formatNumberInput(value: number): string {
   return Number.isInteger(value) ? String(value) : String(value)
 }
 
+function kcalUnitLabel(unit: FoodUnit): string {
+  switch (unit) {
+    case 'g':
+      return 'Kcal por gramo'
+    case 'ml':
+      return 'Kcal por ml'
+    case 'pieza':
+      return 'Kcal por pieza'
+    case 'porcion':
+      return 'Kcal por porción'
+  }
+}
+
+function estimateItemDetail(item: FoodEstimate['items'][number]): string {
+  if (typeof item.grams === 'number' && Number.isFinite(item.grams) && item.grams > 0) {
+    return item.portion ? `${item.grams} g · ${item.portion}` : `${item.grams} g`
+  }
+  return item.portion ? ` · ${item.portion}` : ''
+}
+
 function normalize(value: string): string {
-  return value.trim().toLocaleLowerCase('es-MX')
+  return value
+    .trim()
+    .toLocaleLowerCase('es-MX')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
 }
 
 function todayUTC(): string {

@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 export type FoodEstimate = {
-  items: { name: string; portion?: string; kcal: number }[]
+  items: { name: string; portion?: string; grams?: number; kcal: number }[]
   total_kcal: number
   summary: string
 }

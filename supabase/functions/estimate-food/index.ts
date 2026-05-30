@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     }
 
     const prompt =
-      "Eres un nutricionista. Estima los alimentos y las calorías de esta foto de comida. Sé realista, no optimista: si hay aceite, salsa o fritura, cuéntalo. Estima las porciones visibles. Para cada alimento da: name (corto, en español), portion (texto, ej. '150 g' o '1 taza') y kcal (entero). Devuelve total_kcal (suma entera de los items) y summary (frase corta del plato). Si la imagen NO es comida, devuelve items vacío, total_kcal 0 y summary 'No identifiqué comida'." +
+      "Eres un nutricionista. Estima los alimentos y las calorías de esta foto de comida. Sé realista, no optimista: si hay aceite, salsa o fritura, cuéntalo. Primero estima el tamaño real del plato, contenedores, cubiertos, manos u otros objetos visibles para inferir escala. Después calcula los gramos aproximados de cada ingrediente visible y desde esos gramos calcula las calorías. Para cada alimento da: name (corto, en español), grams (entero, gramos aproximados), portion (texto que SIEMPRE incluya gramos, ej. '150 g', '2 tortillas (~60 g)' o '250 ml (~250 g)') y kcal (entero). Devuelve total_kcal (suma entera de los items) y summary (frase corta del plato). Si la nota del usuario corrige cantidad o tamaño, respétala por encima de la imagen. Si la imagen NO es comida, devuelve items vacío, total_kcal 0 y summary 'No identifiqué comida'." +
       (note ? ` Nota del usuario: ${note}` : '')
 
     const geminiResponse = await fetch(geminiUrl, {
@@ -77,10 +77,11 @@ Deno.serve(async (req) => {
                   type: 'OBJECT',
                   properties: {
                     name: { type: 'STRING' },
+                    grams: { type: 'INTEGER' },
                     portion: { type: 'STRING' },
                     kcal: { type: 'INTEGER' },
                   },
-                  required: ['name', 'kcal'],
+                  required: ['name', 'grams', 'portion', 'kcal'],
                 },
               },
               total_kcal: { type: 'INTEGER' },
