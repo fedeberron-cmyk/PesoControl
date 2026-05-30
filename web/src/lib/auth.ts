@@ -13,29 +13,41 @@ let passwordRecoveryActive =
   typeof window !== 'undefined' &&
   (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))
 
+const passwordRecoveryListeners = new Set<(active: boolean) => void>()
+
+function setPasswordRecoveryActive(active: boolean): void {
+  if (passwordRecoveryActive === active) {
+    return
+  }
+
+  passwordRecoveryActive = active
+  passwordRecoveryListeners.forEach((listener) => listener(active))
+}
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    setPasswordRecoveryActive(true)
+  }
+  if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+    setPasswordRecoveryActive(false)
+  }
+})
+
 export function isPasswordRecoveryActive(): boolean {
   return passwordRecoveryActive
 }
 
 export function clearPasswordRecovery(): void {
-  passwordRecoveryActive = false
+  setPasswordRecoveryActive(false)
 }
 
 export function subscribeToPasswordRecovery(listener: (active: boolean) => void): () => void {
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      passwordRecoveryActive = true
-      listener(true)
-    }
-    if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-      passwordRecoveryActive = false
-      listener(false)
-    }
-  })
+  passwordRecoveryListeners.add(listener)
+  listener(passwordRecoveryActive)
 
-  return () => subscription.unsubscribe()
+  return () => {
+    passwordRecoveryListeners.delete(listener)
+  }
 }
 
 export function useAuthSession(): AuthState {
@@ -60,11 +72,11 @@ export function useAuthSession(): AuthState {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (_event === 'PASSWORD_RECOVERY') {
-        passwordRecoveryActive = true
+        setPasswordRecoveryActive(true)
         setSession(null)
       } else {
         if (_event === 'SIGNED_OUT' || _event === 'USER_UPDATED') {
-          passwordRecoveryActive = false
+          setPasswordRecoveryActive(false)
         }
         setSession(nextSession)
       }
@@ -123,7 +135,7 @@ export async function updatePassword(password: string): Promise<void> {
     throw error
   }
 
-  passwordRecoveryActive = false
+  setPasswordRecoveryActive(false)
   if (typeof window !== 'undefined') {
     window.history.replaceState(null, '', window.location.pathname)
   }

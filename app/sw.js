@@ -1,1 +1,25 @@
-if(!self.define){let e,i={};const s=(s,n)=>(s=new URL(s+".js",n).href,i[s]||new Promise(i=>{if("document"in self){const e=document.createElement("script");e.src=s,e.onload=i,document.head.appendChild(e)}else e=s,importScripts(s),i()}).then(()=>{let e=i[s];if(!e)throw new Error(`Module ${s} didn’t register its module`);return e}));self.define=(n,r)=>{const o=e||("document"in self?document.currentScript.src:"")||location.href;if(i[o])return;let c={};const t=e=>s(e,o),a={module:{uri:o},exports:c,require:t};i[o]=Promise.all(n.map(e=>a[e]||t(e))).then(e=>(r(...e),c))}}define(["./workbox-9c191d2f"],function(e){"use strict";self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"registerSW.js",revision:"ae1913222c70b3e58352bb304c011aac"},{url:"index.html",revision:"e5aea6b26ad4aac86ea89581667641a8"},{url:"icons.svg",revision:"3b4fcfcf393eca4d264dca4a4663bc37"},{url:"icon.svg",revision:"ab259da1e6b2df945c9b284ce07fd1c4"},{url:"favicon.svg",revision:"7e840862161341271697daa99a40d76b"},{url:"assets/index-BuAfnUfC.js",revision:null},{url:"assets/index-BJQaVXE2.css",revision:null},{url:"icon.svg",revision:"ab259da1e6b2df945c9b284ce07fd1c4"},{url:"manifest.webmanifest",revision:"f0e122d5acda9a4fb572a62814f10f57"}],{}),e.cleanupOutdatedCaches(),e.registerRoute(new e.NavigationRoute(e.createHandlerBoundToURL("index.html")))});
+
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', (e) => {
+  self.registration.unregister()
+    .then(() => self.clients.matchAll())
+    .then((clients) => {
+      clients.forEach((client) => {
+        if (client instanceof WindowClient)
+          client.navigate(client.url);
+      });
+      return Promise.resolve();
+    })
+    .then(() => {
+      self.caches.keys().then((cacheNames) => {
+        Promise.all(
+          cacheNames.map((cacheName) => {
+            return self.caches.delete(cacheName);
+          }),
+        );
+      })
+    });
+});
+    
