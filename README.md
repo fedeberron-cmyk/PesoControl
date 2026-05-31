@@ -82,7 +82,8 @@ SUPABASE_ACCESS_TOKEN=<token> supabase functions deploy estimate-food --project-
 
 ## Estado
 
-- ✅ Modelo de deuda calórica, home (trayectoria + hoy + semana), registro manual.
-- ✅ Captura por **foto con IA** (Gemini) — la foto se usa para estimar y no se guarda (v1).
+- ✅ Modelo de deuda calórica, home (trayectoria + hoy + semana), Camino, Comidas, Perfil, registro manual.
+- ✅ Captura por **foto con IA** (Gemini), con opción de guardar la foto cuando exista el bucket de Storage.
 - ✅ Reseteo de contraseña por código.
-- ⏳ Pendiente: pantallas Camino / Comidas / Perfil; guardar foto opcional; service worker offline.
+- ✅ Service worker offline para el shell de la PWA.
+- ⏳ Pendiente operativo: aplicar migración `004_food_photo_storage.sql` en Supabase para guardar fotos opcionales.

@@ -8,6 +8,12 @@ type ProfileRow = {
   debt_total_kcal: number | null
   baseline_net_kcal: number | null
   tdee: number | null
+  age: number | null
+  sex: 'male' | 'female' | null
+  height_cm: number | null
+  current_weight_kg: number | null
+  activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null
+  start_date: string | null
 }
 
 type WeightRow = {
@@ -20,9 +26,57 @@ type FoodRow = {
   calories: number | null
 }
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+export type FoodEntry = {
+  id: string
+  dateISO: string
+  mealType: MealType
+  name: string
+  calories: number
+  quantity: number | null
+  unit: string | null
+  aiEstimated: boolean
+  photoUrl: string | null
+  notes: string | null
+  createdAt: string | null
+}
+
+type FoodEntryRow = FoodRow & {
+  id: string
+  meal_type: MealType | null
+  name: string | null
+  quantity: number | null
+  unit: string | null
+  ai_estimated: boolean | null
+  photo_url: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type UserProfile = {
+  name: string
+  startKg: number
+  goalKg: number
+  debtTotalKcal: number
+  baselineNetKcal: number
+  tdee: number
+  age: number | null
+  sex: 'male' | 'female' | null
+  heightCm: number | null
+  storedCurrentKg: number | null
+  activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null
+  startDateISO: string | null
+}
+
+export type AppModel = HomeSeed & {
+  profile: UserProfile
+  foodEntries: FoodEntry[]
+}
+
 const DAY_LABELS: DailyNet['day'][] = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
 
-export async function loadHomeModel(userId: string): Promise<HomeSeed> {
+export async function loadHomeModel(userId: string): Promise<AppModel> {
   try {
     if (!userId) {
       throw new Error('Missing userId')
@@ -32,7 +86,9 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
       await Promise.all([
         supabase
           .from('users_profile')
-          .select('name,start_weight_kg,target_weight_kg,debt_total_kcal,baseline_net_kcal,tdee')
+          .select(
+            'name,start_weight_kg,target_weight_kg,debt_total_kcal,baseline_net_kcal,tdee,age,sex,height_cm,current_weight_kg,activity_level,start_date'
+          )
           .eq('user_id', userId)
           .maybeSingle<ProfileRow>(),
         supabase
@@ -43,10 +99,13 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
           .returns<WeightRow[]>(),
         supabase
           .from('food_entries')
-          .select('date,calories')
+          .select(
+            'id,date,meal_type,name,calories,quantity,unit,ai_estimated,photo_url,notes,created_at'
+          )
           .eq('user_id', userId)
           .order('date', { ascending: true })
-          .returns<FoodRow[]>(),
+          .order('created_at', { ascending: true })
+          .returns<FoodEntryRow[]>(),
       ])
 
     if (profileError) {
@@ -69,7 +128,8 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     const tdee = requiredNumber(profile.tdee, 'users_profile.tdee')
 
     const weighIns = (weights ?? []).map(toWeighIn).sort((a, b) => a.dateISO.localeCompare(b.dateISO))
-    const intakeByDate = groupIntakeByDate(foods ?? [])
+    const foodEntries = (foods ?? []).map(toFoodEntry)
+    const intakeByDate = groupIntakeByDate(foodEntries)
     const dailyNets = [...intakeByDate.entries()].map(([dateISO, intake]) => ({
       dateISO,
       netKcal: intake - tdee,
@@ -79,8 +139,24 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
     const todayIntake = intakeByDate.get(fromDateISO) ?? 0
     const hasFoodToday = intakeByDate.has(fromDateISO)
 
+    const userName = profile.name?.trim() || demoSeed.userName
+    const profileModel: UserProfile = {
+      name: userName,
+      startKg,
+      goalKg,
+      debtTotalKcal,
+      baselineNetKcal,
+      tdee,
+      age: profile.age ?? null,
+      sex: profile.sex ?? null,
+      heightCm: profile.height_cm ?? null,
+      storedCurrentKg: profile.current_weight_kg ?? null,
+      activityLevel: profile.activity_level ?? null,
+      startDateISO: profile.start_date,
+    }
+
     return {
-      userName: profile.name?.trim() || demoSeed.userName,
+      userName,
       startKg,
       goalKg,
       debtTotalKcal,
@@ -89,10 +165,12 @@ export async function loadHomeModel(userId: string): Promise<HomeSeed> {
       fromDateISO,
       weighIns,
       recentNets: recentNets(intakeByDate, tdee, fromDateISO),
+      profile: profileModel,
+      foodEntries: foodEntries.sort(compareFoodEntriesDesc),
     }
   } catch (error) {
     console.warn('Falling back to demoSeed home model', error)
-    return demoSeed
+    return demoAppModel()
   }
 }
 
@@ -103,13 +181,27 @@ function toWeighIn(row: WeightRow): WeighIn {
   }
 }
 
-function groupIntakeByDate(rows: FoodRow[]): Map<string, number> {
+function toFoodEntry(row: FoodEntryRow): FoodEntry {
+  return {
+    id: row.id,
+    dateISO: requiredDate(row.date, 'food_entries.date'),
+    mealType: row.meal_type ?? 'snack',
+    name: row.name?.trim() || 'Comida',
+    calories: requiredNumber(row.calories, 'food_entries.calories'),
+    quantity: row.quantity,
+    unit: row.unit,
+    aiEstimated: row.ai_estimated ?? false,
+    photoUrl: row.photo_url,
+    notes: row.notes,
+    createdAt: row.created_at,
+  }
+}
+
+function groupIntakeByDate(rows: FoodEntry[]): Map<string, number> {
   const intakeByDate = new Map<string, number>()
 
   for (const row of rows) {
-    const dateISO = requiredDate(row.date, 'food_entries.date')
-    const calories = requiredNumber(row.calories, 'food_entries.calories')
-    intakeByDate.set(dateISO, (intakeByDate.get(dateISO) ?? 0) + calories)
+    intakeByDate.set(row.dateISO, (intakeByDate.get(row.dateISO) ?? 0) + row.calories)
   }
 
   return intakeByDate
@@ -151,4 +243,62 @@ function requiredNumber(value: number | null, fieldName: string): number {
     throw new Error(`Missing ${fieldName}`)
   }
   return value
+}
+
+function compareFoodEntriesDesc(a: FoodEntry, b: FoodEntry): number {
+  const dateCompare = b.dateISO.localeCompare(a.dateISO)
+  if (dateCompare !== 0) {
+    return dateCompare
+  }
+  return (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
+}
+
+function demoAppModel(): AppModel {
+  const foodEntries: FoodEntry[] = [
+    {
+      id: 'demo-1',
+      dateISO: demoSeed.fromDateISO,
+      mealType: 'breakfast',
+      name: 'Huevos con tortilla',
+      calories: 420,
+      quantity: 1,
+      unit: 'porcion',
+      aiEstimated: false,
+      photoUrl: null,
+      notes: null,
+      createdAt: `${demoSeed.fromDateISO}T14:00:00.000Z`,
+    },
+    {
+      id: 'demo-2',
+      dateISO: demoSeed.fromDateISO,
+      mealType: 'lunch',
+      name: 'Pechuga de pollo con arroz',
+      calories: 680,
+      quantity: 1,
+      unit: 'porcion',
+      aiEstimated: true,
+      photoUrl: null,
+      notes: null,
+      createdAt: `${demoSeed.fromDateISO}T20:00:00.000Z`,
+    },
+  ]
+
+  return {
+    ...demoSeed,
+    profile: {
+      name: demoSeed.userName,
+      startKg: demoSeed.startKg,
+      goalKg: demoSeed.goalKg,
+      debtTotalKcal: demoSeed.debtTotalKcal,
+      baselineNetKcal: 0,
+      tdee: 2200,
+      age: null,
+      sex: null,
+      heightCm: null,
+      storedCurrentKg: null,
+      activityLevel: null,
+      startDateISO: null,
+    },
+    foodEntries,
+  }
 }

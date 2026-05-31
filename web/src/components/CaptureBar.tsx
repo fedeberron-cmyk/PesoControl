@@ -3,9 +3,13 @@ import { CaptureSheet } from './CaptureSheet'
 
 export function CaptureBar({
   userId,
+  activeView,
+  onNavigate,
   onSaved,
 }: {
   userId: string
+  activeView: 'hoy' | 'camino' | 'comidas' | 'perfil'
+  onNavigate: (view: 'hoy' | 'camino' | 'comidas' | 'perfil') => void
   onSaved: () => Promise<void>
 }) {
   const [captureOpen, setCaptureOpen] = useState(false)
@@ -22,30 +26,46 @@ export function CaptureBar({
         <div class="capnote">Foto con IA o manual: lo eliges al tocar.</div>
       </div>
       <nav class="tabbar" aria-label="Principal">
-        <a class="t on" href="#hoy">
+        <button
+          class={activeView === 'hoy' ? 't on' : 't'}
+          type="button"
+          onClick={() => onNavigate('hoy')}
+        >
           <span class="ic" aria-hidden="true">
             ◎
           </span>
           Hoy
-        </a>
-        <a class="t" href="#camino">
+        </button>
+        <button
+          class={activeView === 'camino' ? 't on' : 't'}
+          type="button"
+          onClick={() => onNavigate('camino')}
+        >
           <span class="ic" aria-hidden="true">
             ▤
           </span>
           Camino
-        </a>
-        <a class="t" href="#comidas">
+        </button>
+        <button
+          class={activeView === 'comidas' ? 't on' : 't'}
+          type="button"
+          onClick={() => onNavigate('comidas')}
+        >
           <span class="ic" aria-hidden="true">
             ⊞
           </span>
           Comidas
-        </a>
-        <a class="t" href="#perfil">
+        </button>
+        <button
+          class={activeView === 'perfil' ? 't on' : 't'}
+          type="button"
+          onClick={() => onNavigate('perfil')}
+        >
           <span class="ic" aria-hidden="true">
             ○
           </span>
           Perfil
-        </a>
+        </button>
       </nav>
       {captureOpen ? (
         <CaptureSheet userId={userId} onClose={() => setCaptureOpen(false)} onSaved={onSaved} />

@@ -657,6 +657,10 @@ a {
   flex-direction: column;
   gap: 4px;
   align-items: center;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 
 .tabbar .t.on {
@@ -665,6 +669,180 @@ a {
 
 .tabbar .ic {
   font-size: 17px;
+}
+
+.view-hero {
+  display: grid;
+  gap: 12px;
+}
+
+.view-hero .kick {
+  color: var(--muted);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+
+.view-hero h2 {
+  font-weight: 500;
+  font-size: 30px;
+  line-height: 1.05;
+}
+
+.view-hero p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 3px;
+  min-height: 92px;
+  align-content: center;
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+
+.metric-card span,
+.metric-card small {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.metric-card strong {
+  color: var(--accent);
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.detail-card h3 {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.detail-list,
+.timeline-list,
+.entry-list,
+.meal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-row,
+.timeline-row,
+.food-entry-row,
+.meal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 11px 12px;
+  font-size: 13px;
+}
+
+.detail-row strong,
+.timeline-row strong,
+.food-entry-row b,
+.meal-head strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.detail-row strong.def {
+  color: var(--accent);
+}
+
+.detail-row strong.sur {
+  color: var(--sand);
+}
+
+.timeline-row span {
+  color: var(--muted);
+}
+
+.fine-note,
+.empty-state {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.fine-note {
+  margin-top: 12px;
+}
+
+.empty-state {
+  padding: 8px 0;
+}
+
+.empty-state.compact {
+  padding: 6px 12px 10px;
+}
+
+.meal-block {
+  display: grid;
+  gap: 7px;
+}
+
+.meal-head {
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 2px;
+}
+
+.meal-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.food-entry-row {
+  align-items: center;
+}
+
+.food-entry-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.food-entry-row strong {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.food-entry-row span {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.food-entry-row b {
+  white-space: nowrap;
 }
 
 .capture-overlay {
@@ -1022,6 +1200,25 @@ a {
   border: 1px solid color-mix(in srgb, var(--hairline) 72%, transparent);
   box-shadow: 0 8px 22px rgba(33, 28, 21, 0.14);
   backdrop-filter: blur(10px);
+}
+
+.photo-save-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.photo-save-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 .estimate-action {

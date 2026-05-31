@@ -38,6 +38,7 @@ export function CaptureSheet({
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
   const [photoNote, setPhotoNote] = useState('')
+  const [savePhoto, setSavePhoto] = useState(false)
   const [estimating, setEstimating] = useState(false)
   const [estimate, setEstimate] = useState<FoodEstimate | null>(null)
   const [estimatedName, setEstimatedName] = useState('')
@@ -290,6 +291,11 @@ export function CaptureSheet({
     setMessage(null)
 
     try {
+      const photoUrl = await uploadPhotoIfRequested({
+        file: photoFile,
+        userId,
+        enabled: savePhoto,
+      })
       const { error } = await supabase.from('food_entries').insert({
         user_id: userId,
         date: todayUTC(),
@@ -297,7 +303,8 @@ export function CaptureSheet({
         name: estimatedName.trim(),
         calories: parsedEstimatedCalories,
         ai_estimated: true,
-        photo_url: null,
+        photo_url: photoUrl,
+        notes: photoNote.trim() || null,
       })
 
       if (error) {
@@ -526,6 +533,17 @@ export function CaptureSheet({
             )}
           </div>
 
+          {photoFile ? (
+            <label class="photo-save-option">
+              <input
+                type="checkbox"
+                checked={savePhoto}
+                onChange={(event) => setSavePhoto(event.currentTarget.checked)}
+              />
+              <span>Guardar foto con este registro</span>
+            </label>
+          ) : null}
+
           {!estimate ? (
             <label class="field">
               <span>Nota para estimar</span>
@@ -640,6 +658,53 @@ export function CaptureSheet({
       </section>
     </div>
   )
+}
+
+async function uploadPhotoIfRequested({
+  file,
+  userId,
+  enabled,
+}: {
+  file: File | null
+  userId: string
+  enabled: boolean
+}): Promise<string | null> {
+  if (!enabled || !file) {
+    return null
+  }
+
+  const extension = photoExtension(file)
+  const path = `${userId}/${todayUTC()}/${crypto.randomUUID()}.${extension}`
+  const { error } = await supabase.storage.from('food-photos').upload(path, file, {
+    cacheControl: '31536000',
+    contentType: file.type || 'image/jpeg',
+    upsert: false,
+  })
+
+  if (error) {
+    console.warn('Could not upload food photo', error)
+    return null
+  }
+
+  const { data } = supabase.storage.from('food-photos').getPublicUrl(path)
+  return data.publicUrl
+}
+
+function photoExtension(file: File): string {
+  const byName = file.name.split('.').pop()?.toLowerCase()
+  if (byName && /^[a-z0-9]{2,5}$/.test(byName)) {
+    return byName
+  }
+  if (file.type === 'image/png') {
+    return 'png'
+  }
+  if (file.type === 'image/webp') {
+    return 'webp'
+  }
+  if (file.type === 'image/heic') {
+    return 'heic'
+  }
+  return 'jpg'
 }
 
 function parsePositiveNumber(value: string): number | null {
