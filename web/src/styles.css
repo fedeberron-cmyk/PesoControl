@@ -1359,5 +1359,14 @@ a {
     height: 100svh;
     min-height: 0;
     border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .statusbar {
+    display: none;
+  }
+
+  .footer {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
